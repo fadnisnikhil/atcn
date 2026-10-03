@@ -22,6 +22,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Internal pins match, and warn about changes to already-published versions
+        if: matrix.node-version == '24'
+        run: node scripts/check-versions.mjs
       - name: Quickstart (bundled demo, then the offline verifier on its output)
         run: |
           npx atcn-local demo --data-dir "$RUNNER_TEMP/atcn"
@@ -44,3 +47,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e '.[test]'
       - run: pytest
+      - name: Warn about changes to an already-published version
+        if: matrix.python-version == '3.13'
+        working-directory: .
+        run: python scripts/check_pypi_unchanged.py

@@ -43,6 +43,8 @@ Details: [COMPATIBILITY.md](packages/schema/COMPATIBILITY.md).
 
 - **Published versions are never changed or unpublished.** A bad release is fixed with a new version.
 - **Later releases are published from GitHub Actions** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) when a `v*` tag is pushed. npm releases carry provenance.
+- **Pushing to `main` publishes nothing.** Only a `v*` tag does, and only package versions not yet on npm or PyPI.
+- **A change needs a version bump.** If a package's files differ from its published version, CI warns and the release workflow fails instead of skipping it. Internal `@atcn/*` dependencies must pin the exact version in the repository; CI fails otherwise. Run `npm run check:versions` locally (after `npm ci`, Python 3.11 or later).
 
 ## Known limitations
 

@@ -1,5 +1,6 @@
 # Publishes on a v* tag, using npm and PyPI trusted publishing (no stored tokens). Packages are versioned
 # independently: each package whose current version is not yet on the registry is published; the rest are skipped.
+# A package whose files changed while its version stayed the same fails the release instead of being skipped.
 # Registry versions are immutable: to fix a bad release, bump the version and tag again.
 name: Release
 
@@ -27,6 +28,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Internal pins match, and already-published versions are unchanged
+        run: node scripts/check-versions.mjs --strict
       - name: Publish new package versions
         run: |
           for dir in $(node -p "require('./package.json').workspaces.join(' ')"); do
@@ -52,6 +55,8 @@ jobs:
           python-version: "3.13"
       - run: pip install -e 'packages/sdk-python[test]' build
       - run: pytest packages/sdk-python
+      - name: An already-published version is unchanged
+        run: python scripts/check_pypi_unchanged.py --strict
       - run: python -m build packages/sdk-python --outdir dist
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
