@@ -1,0 +1,56 @@
+# Publishes every package when a v<version> tag is pushed, using npm and PyPI trusted publishing (no stored tokens).
+# Registry versions are immutable: to fix a bad release, bump the version and tag again.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - name: Check that the tag matches every package version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          for manifest in packages/*/package.json examples/*/package.json; do
+            version=$(node -p "require('./$manifest').version")
+            if [ "$version" != "$tag_version" ]; then echo "$manifest is $version, tag is $GITHUB_REF_NAME"; exit 1; fi
+          done
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm publish --workspaces --access public
+
+  pypi:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Check that the tag matches the Python package version
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('packages/sdk-python/pyproject.toml', 'rb'))['project']['version'])")
+          if [ "$version" != "${GITHUB_REF_NAME#v}" ]; then echo "pyproject.toml is $version, tag is $GITHUB_REF_NAME"; exit 1; fi
+      - run: pip install -e 'packages/sdk-python[test]' build
+      - run: pytest packages/sdk-python
+      - run: python -m build packages/sdk-python --outdir dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

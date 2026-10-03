@@ -1,0 +1,31 @@
+{
+  "name": "atcn-monorepo",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "packages/schema",
+    "packages/usage",
+    "packages/core",
+    "packages/verifiers",
+    "packages/subledger",
+    "packages/sdk-ts",
+    "packages/verify-cli",
+    "examples/local-runner"
+  ],
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "npm run build --workspaces",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "demo": "atcn-local demo",
+    "gen:schemas": "tsx --conditions=atcn-source packages/schema/scripts/generate-json-schemas.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-json-schemas.ts",
+    "gen:vectors": "tsx --conditions=atcn-source packages/schema/scripts/generate-test-vectors.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-test-vectors.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "$id": "https://schemas.atcn.dev/1.0/posting-batch.json",
+  "title": "posting-batch",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string"
+    },
+    "obligation_id": {
+      "type": "string",
+      "pattern": "^obl_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "contingent",
+        "clearing",
+        "dispute_freeze",
+        "dispute_release",
+        "settlement",
+        "reserve",
+        "refund",
+        "return",
+        "reversal"
+      ]
+    },
+    "decision_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^dec_[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "settlement_event_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reverses_batch_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "policy_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"
+      }
+    },
+    "rounding": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "method",
+            "detail"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lines": {
+      "minItems": 2,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "account_type": {
+            "type": "string",
+            "enum": [
+              "obligation_expense",
+              "contingent_expense",
+              "contingent_payable",
+              "payable",
+              "receivable",
+              "platform_fee",
+              "dispute_frozen",
+              "reserve_reported",
+              "settlement_reported",
+              "refund",
+              "unallocated_residual"
+            ]
+          },
+          "party_id": {
+            "type": "string"
+          },
+          "allocation_role": {
+            "type": "string",
+            "enum": [
+              "payer_expense",
+              "payee_share",
+              "parent_margin",
+              "child_cost",
+              "platform_fee",
+              "contingent",
+              "dispute_freeze",
+              "settlement",
+              "reserve",
+              "refund",
+              "unallocated_residual"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "debit_minor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "credit_minor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "account_type",
+          "party_id",
+          "allocation_role",
+          "currency",
+          "debit_minor",
+          "credit_minor"
+        ]
+      }
+    },
+    "posted_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    }
+  },
+  "required": [
+    "batch_id",
+    "obligation_id",
+    "entry_type",
+    "decision_id",
+    "settlement_event_id",
+    "reverses_batch_id",
+    "policy_version",
+    "source_event_ids",
+    "rounding",
+    "lines",
+    "posted_at"
+  ]
+}

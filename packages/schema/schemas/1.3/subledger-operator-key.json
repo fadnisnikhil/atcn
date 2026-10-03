@@ -1,0 +1,44 @@
+{
+  "$id": "https://schemas.atcn.dev/1.3/subledger-operator-key.json",
+  "title": "subledger-operator-key",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "operator_id": {
+      "type": "string"
+    },
+    "key_id": {
+      "type": "string"
+    },
+    "algorithm": {
+      "type": "string",
+      "const": "Ed25519"
+    },
+    "public_key": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "operator_id",
+    "key_id",
+    "algorithm",
+    "public_key",
+    "created_at",
+    "revoked_at"
+  ]
+}

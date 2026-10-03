@@ -1,0 +1,45 @@
+{
+  "operator": "Acme Robotics",
+  "task": {
+    "external_ref": "calculator-fix",
+    "currency": "USD",
+    "budget_minor": 15000,
+    "cost_center": "engineering",
+    "shared_description": "Fix the calculator bug"
+  },
+  "obligations": [
+    {
+      "provider": "Beta Workers",
+      "description": "Fix the add() bug and cover negative numbers",
+      "amount_minor": 10000,
+      "required_checks": ["unit_tests", "lint", "patch"],
+      "evidence": {
+        "test_report": "evidence/junit.xml",
+        "lint_report": "evidence/eslint.json",
+        "patch_ref": "evidence/fix.diff"
+      },
+      "completion_note": "fix delivered with tests"
+    }
+  ],
+  "delegations": [
+    {
+      "external_ref": "search-1",
+      "provider_name_stated": "Gamma Search API",
+      "provider_job_ref": "search-job-1",
+      "quoted_max_minor": 1500,
+      "shared_description": "Search for prior bug reports",
+      "downstream_visibility": "none",
+      "claims": [{ "type": "completion", "asserted_by": "provider", "note": "search results returned" }]
+    }
+  ],
+  "financial_events": [
+    {
+      "type": "charge",
+      "source": "gamma-billing",
+      "source_event_id": "gamma-inv-1",
+      "amount_minor": 1200,
+      "provider_reference": "search-job-1",
+      "match": { "provider_job_ref": "search-job-1" }
+    }
+  ]
+}
