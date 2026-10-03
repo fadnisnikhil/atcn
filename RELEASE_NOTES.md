@@ -32,7 +32,7 @@ This is the first public release of the ATCN libraries. With them you can captur
 
 ## Versions and compatibility
 
-- **Package versions.** Every package is 1.3.0, including `@atcn/schema`, `@atcn/core` and `@atcn/verifiers`, which earlier unpublished builds numbered 1.0.0. No package is published as 1.0.0. The 1.0.0 pre-release verifier builds are withdrawn.
+- **Package versions.** Every package is 1.3.0, including `@atcn/schema`, `@atcn/core` and `@atcn/verifiers`, which earlier unpublished builds numbered 1.0.0. No package is published as 1.0.0. The 1.0.0 pre-release verifier builds are withdrawn, and `@atcn/verify-cli` 1.3.0 is the first released verifier. Later releases may version packages independently. [COMPATIBILITY.md](packages/schema/COMPATIBILITY.md#schema-versions-supported-by-each-package) lists the schema versions each package emits and reads.
 - **Subledger documents.** These use `schema_version` `1.3`. Verifiers 1.3.0 and later accept `1.2` and `1.3`. Any other version fails with an explicit "unsupported schema_version" message, and `atcn-verify` exits with code `3`.
 - **The local runner's signer.** Its documents carry `issuer.signed_by: "atcn-local-runner"`. That value was added to schema `1.3` without a new schema version, because no verifier had been published before 1.3.0.
 - **Obligation events and closure packages.** These use wire `schema_version` `1.0`.

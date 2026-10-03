@@ -47,6 +47,22 @@ JSON Schemas: [`schemas/1.2/`](schemas/1.2/) and [`schemas/1.3/`](schemas/1.3/).
 - Every package in this repository is released together, at the same version, from a tagged commit (`v1.3.0`).
 - A published version is never changed or reused. A bad release is fixed with a new version. The bad one is marked with `npm deprecate` or yanked on PyPI, never deleted and re-uploaded.
 
+## Schema versions supported by each package
+
+Packages are versioned independently. They all start at 1.3.0, and later releases may differ. Each package's row lists what it emits and what it reads, and the row is updated whenever a release changes either.
+
+| Package | Version | Emits | Reads and verifies |
+| --- | --- | --- | --- |
+| `@atcn/schema` | 1.3.0 | Wire `1.0` (events, terms, closure packages) | Wire `1.0`; ships JSON Schemas for wire `1.0` and subledger `1.2` and `1.3` |
+| `@atcn/core` | 1.3.0 | Wire `1.0` closure packages and service events | Wire `1.0` closure packages (`verifyClosurePackage`) |
+| `@atcn/verifiers` | 1.3.0 | Verifier results for wire `1.0` evidence | Wire `1.0` evidence envelopes |
+| `@atcn/subledger` | 1.3.0 | Subledger `1.3` receipts and closures | Subledger `1.2` and `1.3` (`verifySubledgerDocument`) |
+| `@atcn/sdk` | 1.3.0 | Wire `1.0` events | Wire `1.0` closure packages; subledger `1.2` and `1.3` |
+| `@atcn/verify-cli` | 1.3.0 | None | Wire `1.0` closure packages; subledger `1.2` and `1.3`. This is the first released verifier. |
+| `@atcn/local-runner` | 1.3.0 | Subledger `1.3` closures (`signed_by: "atcn-local-runner"`); wire `1.0` closure packages | Same as `@atcn/verify-cli` |
+| `@atcn/usage` | 1.3.0 | Usage reports only (no signed documents) | None |
+| `atcn` (Python) | 1.3.0 | Wire `1.0` events; response statements and operator countersignatures (unchanged from subledger `1.2` to `1.3`) | Event, statement and countersignature signatures. It does not verify receipts, closures or closure packages. |
+
 ## Deprecation
 
 - A field or event type is marked deprecated for at least one MINOR release before it can be removed in the next MAJOR release.
