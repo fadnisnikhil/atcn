@@ -19,7 +19,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "demo": "atcn-local demo",
-    "check:versions": "node scripts/check-versions.mjs && python3 scripts/check_pypi_unchanged.py",
+    "check:versions": "node scripts/release.mjs check",
+    "set-version": "node scripts/release.mjs set",
+    "release:plan": "node scripts/release.mjs plan",
     "gen:schemas": "tsx --conditions=atcn-source packages/schema/scripts/generate-json-schemas.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-json-schemas.ts",
     "gen:vectors": "tsx --conditions=atcn-source packages/schema/scripts/generate-test-vectors.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-test-vectors.ts"
   },

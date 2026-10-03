@@ -1,6 +1,6 @@
 # ATCN schema versioning and compatibility (IN-9)
 
-Package version: `@atcn/schema` 1.3.0, wire `schema_version` `"1.0"`. Every package in this repository is versioned 1.3.0 for its first public release. Earlier package versions were never published. Published JSON Schemas: [`schemas/1.0/`](schemas/1.0/). Signing vectors: [`test-vectors/vectors.json`](test-vectors/vectors.json).
+Wire `schema_version` `"1.0"`. Every package in this repository shares one version; the first public release was 1.3.0. Earlier package versions were never published. Published JSON Schemas: [`schemas/1.0/`](schemas/1.0/). Signing vectors: [`test-vectors/vectors.json`](test-vectors/vectors.json).
 
 ## Versioning rules
 
@@ -36,7 +36,7 @@ Subledger receipts and closures carry their own `schema_version`, separate from 
 JSON Schemas: [`schemas/1.2/`](schemas/1.2/) and [`schemas/1.3/`](schemas/1.3/). Each receipt response links the schema matching its own version.
 
 - **Producers.** The service signs every new receipt revision and closure version as `1.3`. Documents that were already signed as `1.2` are never rewritten. A `1.3` revision may link to a `1.2` previous revision.
-- **Verifiers 1.3.0 and later** accept `1.2` and `1.3`. They check the version before anything else. Any other version gets one failing check, `schema_version`, plus `unsupported_schema_version` in the report and the message `unsupported schema_version X: this verifier (@atcn/subledger 1.3.0) supports 1.2 and 1.3. Upgrade ...`. `atcn-verify` exits with code `3` for this case, and with `1` for an invalid document.
+- **Verifiers 1.3.0 and later** accept `1.2` and `1.3`. They check the version before anything else. Any other version gets one failing check, `schema_version`, plus `unsupported_schema_version` in the report and the message `unsupported schema_version X: this verifier (@atcn/subledger <version>) supports 1.2 and 1.3. Upgrade ...`. `atcn-verify` exits with code `3` for this case, and with `1` for an invalid document.
 - **A document that declares `1.2` but uses `1.3` fields** fails the `schema` check, because a `1.2` verifier could not read it. That includes `signed_by: "atcn-local-runner"`.
 - **Who signed.** `issuer.signed_by` is `atcn-hosted-service` for documents from the hosted service and `atcn-local-runner` for documents produced on your machine by `atcn-local`. The local runner signs with a key it generates, so its documents prove internal consistency, not a third party's endorsement. Trust it only with the key file from the same run. `atcn-local-runner` was added to `1.3` without a new schema version because no verifier had been published before 1.3.0. Every released verifier accepts it.
 - **1.3.0 is the first released verifier, and the 1.0.0 pre-release builds are withdrawn.** They were never published to a registry, and no package will be published as 1.0.0. Do not publish or distribute them: they lack the version check and would reject newer documents with a generic schema error. Every released verifier checks `schema_version` first. That check is covered by the test "names an unsupported schema version explicitly instead of failing on schema or signature", so a verifier meeting a future schema version always says it is unsupported and needs an upgrade.
@@ -44,24 +44,25 @@ JSON Schemas: [`schemas/1.2/`](schemas/1.2/) and [`schemas/1.3/`](schemas/1.3/).
 
 ## Releases
 
-- Every package in this repository is released together, at the same version, from a tagged commit (`v1.3.0`).
+- Every npm package and the Python package share one version and are released together from a tagged commit (`v1.3.2`, ...).
+- Every push to `main` that changes a package releases all of them at the next patch version. A MINOR or MAJOR release sets the version first (`npm run set-version -- 1.4.0`).
 - A published version is never changed or reused. A bad release is fixed with a new version. The bad one is marked with `npm deprecate` or yanked on PyPI, never deleted and re-uploaded.
 
 ## Schema versions supported by each package
 
-Packages are versioned independently. They all start at 1.3.0, and later releases may differ. Each package's row lists what it emits and what it reads, and the row is updated whenever a release changes either.
+All packages share one version. This table applies from 1.3.0 on; a release that changes what a package emits or reads updates its row and says from which version.
 
-| Package | Version | Emits | Reads and verifies |
-| --- | --- | --- | --- |
-| `@atcn/schema` | 1.3.0 | Wire `1.0` (events, terms, closure packages) | Wire `1.0`; ships JSON Schemas for wire `1.0` and subledger `1.2` and `1.3` |
-| `@atcn/core` | 1.3.0 | Wire `1.0` closure packages and service events | Wire `1.0` closure packages (`verifyClosurePackage`) |
-| `@atcn/verifiers` | 1.3.0 | Verifier results for wire `1.0` evidence | Wire `1.0` evidence envelopes |
-| `@atcn/subledger` | 1.3.0 | Subledger `1.3` receipts and closures | Subledger `1.2` and `1.3` (`verifySubledgerDocument`) |
-| `@atcn/sdk` | 1.3.0 | Wire `1.0` events | Wire `1.0` closure packages; subledger `1.2` and `1.3` |
-| `@atcn/verify-cli` | 1.3.0 | None | Wire `1.0` closure packages; subledger `1.2` and `1.3`. This is the first released verifier. |
-| `@atcn/local-runner` | 1.3.0 | Subledger `1.3` closures (`signed_by: "atcn-local-runner"`); wire `1.0` closure packages | Same as `@atcn/verify-cli` |
-| `@atcn/usage` | 1.3.0 | Usage reports only (no signed documents) | None |
-| `atcn` (Python) | 1.3.0 | Wire `1.0` events; response statements and operator countersignatures (unchanged from subledger `1.2` to `1.3`) | Event, statement and countersignature signatures. It does not verify receipts, closures or closure packages. |
+| Package | Emits | Reads and verifies |
+| --- | --- | --- |
+| `@atcn/schema` | Wire `1.0` (events, terms, closure packages) | Wire `1.0`; ships JSON Schemas for wire `1.0` and subledger `1.2` and `1.3` |
+| `@atcn/core` | Wire `1.0` closure packages and service events | Wire `1.0` closure packages (`verifyClosurePackage`) |
+| `@atcn/verifiers` | Verifier results for wire `1.0` evidence | Wire `1.0` evidence envelopes |
+| `@atcn/subledger` | Subledger `1.3` receipts and closures | Subledger `1.2` and `1.3` (`verifySubledgerDocument`) |
+| `@atcn/sdk` | Wire `1.0` events | Wire `1.0` closure packages; subledger `1.2` and `1.3` |
+| `@atcn/verify-cli` | None | Wire `1.0` closure packages; subledger `1.2` and `1.3`. 1.3.0 is the first released verifier. |
+| `@atcn/local-runner` | Subledger `1.3` closures (`signed_by: "atcn-local-runner"`); wire `1.0` closure packages | Same as `@atcn/verify-cli` |
+| `@atcn/usage` | Usage reports only (no signed documents) | None |
+| `atcn` (Python) | Wire `1.0` events; response statements and operator countersignatures (unchanged from subledger `1.2` to `1.3`) | Event, statement and countersignature signatures. It does not verify receipts, closures or closure packages. |
 
 ## Deprecation
 

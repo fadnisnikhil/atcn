@@ -1,18 +1,80 @@
-# Publishes on a v* tag, using npm and PyPI trusted publishing (no stored tokens). Packages are versioned
-# independently: each package whose current version is not yet on the registry is published; the rest are skipped.
-# A package whose files changed while its version stayed the same fails the release instead of being skipped.
-# Registry versions are immutable: to fix a bad release, bump the version and tag again.
+# Every push to main releases automatically. All npm packages and the Python package share one version.
+#
+# 1. `version` (on push): compares the repository with npm and PyPI (scripts/release.mjs plan).
+#    - Nothing changed (docs, tests, CI only): stops; nothing is published.
+#    - A package changed: bumps every package to the next patch version, tests, commits "Release X" to main, tags vX.
+#    - The version in the repository is not published yet (after `npm run set-version -- 1.4.0`): tags it as is.
+#    Then it starts this workflow again on the tag.
+# 2. `npm` and `pypi` (on that tag): publish the versions not yet on the registries, with npm and PyPI trusted
+#    publishing (no stored tokens). Publishing runs on the tagged release commit, so npm provenance names the commit
+#    that was actually built.
+#
+# Registry versions are immutable: a bad release is fixed by the next one.
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  version:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: npm ci
+      - run: pip install -e 'packages/sdk-python[test]'
+      - id: plan
+        run: node scripts/release.mjs plan
+      - name: Bump every package to the next patch version
+        if: steps.plan.outputs.action == 'bump'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: node scripts/release.mjs set "$VERSION"
+      - name: Test the release
+        if: steps.plan.outputs.action != 'none'
+        run: |
+          npm run typecheck
+          npm test
+          pytest packages/sdk-python
+      - name: Commit, tag, and start publishing
+        if: steps.plan.outputs.action != 'none'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet; then
+            git commit -am "Release $VERSION"
+            git push origin HEAD:main
+          fi
+          if [ -z "$(git ls-remote --tags origin "refs/tags/v$VERSION")" ]; then
+            git tag -a "v$VERSION" -m "Release $VERSION"
+            git push origin "v$VERSION"
+          fi
+          gh workflow run release.yml --ref "v$VERSION"
+
   npm:
+    if: github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -26,10 +88,8 @@ jobs:
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - name: Internal pins match, and already-published versions are unchanged
-        run: node scripts/check-versions.mjs --strict
+      - name: Every published package is unchanged (a changed one needs a new version)
+        run: node scripts/release.mjs plan --strict
       - name: Publish new package versions
         run: |
           for dir in $(node -p "require('./package.json').workspaces.join(' ')"); do
@@ -43,6 +103,7 @@ jobs:
           done
 
   pypi:
+    needs: npm
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -53,10 +114,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - run: pip install -e 'packages/sdk-python[test]' build
-      - run: pytest packages/sdk-python
-      - name: An already-published version is unchanged
-        run: python scripts/check_pypi_unchanged.py --strict
+      - run: pip install build
       - run: python -m build packages/sdk-python --outdir dist
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:

@@ -15,7 +15,7 @@ export class AtcnApiError extends Error {
 }
 
 /** Must equal this package's version in package.json (checked by a test). */
-export const SDK_VERSION = "1.3.0";
+export const SDK_VERSION = "1.3.2";
 /** Names the SDK and its version on every request, so the API operator can count SDK versions in use. Nothing else is sent. */
 export const SDK_HEADER = "atcn-sdk";
 

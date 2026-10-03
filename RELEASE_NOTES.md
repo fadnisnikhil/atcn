@@ -32,7 +32,7 @@ This is the first public release of the ATCN libraries. With them you can captur
 
 ## Versions and compatibility
 
-- **Package versions.** Every package is 1.3.0, including `@atcn/schema`, `@atcn/core` and `@atcn/verifiers`, which earlier unpublished builds numbered 1.0.0. No package is published as 1.0.0. The 1.0.0 pre-release verifier builds are withdrawn, and `@atcn/verify-cli` 1.3.0 is the first released verifier. Later releases may version packages independently. [COMPATIBILITY.md](packages/schema/COMPATIBILITY.md#schema-versions-supported-by-each-package) lists the schema versions each package emits and reads.
+- **Package versions.** Every package is 1.3.0, including `@atcn/schema`, `@atcn/core` and `@atcn/verifiers`, which earlier unpublished builds numbered 1.0.0. No package is published as 1.0.0. The 1.0.0 pre-release verifier builds are withdrawn, and `@atcn/verify-cli` 1.3.0 is the first released verifier. Later releases keep every package at one shared version. [COMPATIBILITY.md](packages/schema/COMPATIBILITY.md#schema-versions-supported-by-each-package) lists the schema versions each package emits and reads.
 - **Subledger documents.** These use `schema_version` `1.3`. Verifiers 1.3.0 and later accept `1.2` and `1.3`. Any other version fails with an explicit "unsupported schema_version" message, and `atcn-verify` exits with code `3`.
 - **The local runner's signer.** Its documents carry `issuer.signed_by: "atcn-local-runner"`. That value was added to schema `1.3` without a new schema version, because no verifier had been published before 1.3.0.
 - **Obligation events and closure packages.** These use wire `schema_version` `1.0`.
@@ -42,9 +42,10 @@ Details: [COMPATIBILITY.md](packages/schema/COMPATIBILITY.md).
 ## Release policy
 
 - **Published versions are never changed or unpublished.** A bad release is fixed with a new version.
-- **Later releases are published from GitHub Actions** ([`.github/workflows/release.yml`](.github/workflows/release.yml)) when a `v*` tag is pushed. npm releases carry provenance.
-- **Pushing to `main` publishes nothing.** Only a `v*` tag does, and only package versions not yet on npm or PyPI.
-- **A change needs a version bump.** If a package's files differ from its published version, CI warns and the release workflow fails instead of skipping it. Internal `@atcn/*` dependencies must pin the exact version in the repository; CI fails otherwise. Run `npm run check:versions` locally (after `npm ci`, Python 3.11 or later).
+- **One version for everything.** Every npm package and the Python package share one version. `npm run check:versions` checks that the package files, internal `@atcn/*` pins and version constants agree; CI fails otherwise.
+- **Every push to `main` releases automatically** ([`.github/workflows/release.yml`](.github/workflows/release.yml)). If a package changed since the published version, GitHub Actions bumps every package to the next patch version, commits "Release X" to `main`, tags `vX`, and publishes to npm (with provenance) and PyPI. A push that changes only docs, tests or CI publishes nothing. Pull after a release, because the version bump is a new commit on `main`.
+- **MINOR and MAJOR releases:** run `npm run set-version -- 1.4.0`, commit, and push. That version is published as is.
+- `npm run release:plan` shows what the next push would release (after `npm ci`).
 
 ## Known limitations
 

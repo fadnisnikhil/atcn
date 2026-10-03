@@ -373,7 +373,7 @@ describe("projections and offline verification", () => {
         expect(report.valid).toBe(false);
         expect(report.unsupported_schema_version).toBe(doc.payload.schema_version);
         expect(report.checks.map((c) => c.name)).toEqual(["schema_version"]);
-        expect(report.checks[0].details[0]).toContain(`unsupported schema_version ${doc.payload.schema_version}: this verifier (@atcn/subledger 1.3.0) supports 1.2 and 1.3`);
+        expect(report.checks[0].details[0]).toContain(`unsupported schema_version ${doc.payload.schema_version}: this verifier (@atcn/subledger ${SUBLEDGER_VERIFIER_VERSION}) supports 1.2 and 1.3`);
       }
     });
 
