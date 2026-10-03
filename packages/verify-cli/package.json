@@ -17,7 +17,7 @@
     "node": ">=20"
   },
   "bin": {
-    "atcn-verify": "./bin/atcn-verify.js"
+    "atcn-verify": "bin/atcn-verify.js"
   },
   "files": [
     "bin",
