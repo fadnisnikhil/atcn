@@ -9,7 +9,7 @@ This repository holds the open-source parts: schemas and signing, reconciliation
 Requires Node.js 20 or later.
 
 ```bash
-git clone https://github.com/OWNER/atcn.git   # replaced with the real URL at publication
+git clone https://github.com/fadnisnikhil/atcn.git
 cd atcn
 npm ci                                         # installs and builds every package
 npx atcn-local demo

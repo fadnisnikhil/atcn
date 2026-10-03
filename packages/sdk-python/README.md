@@ -26,6 +26,6 @@ The API clients need an ATCN API at `base_url`. The hosted API is not open for s
 
 The Python SDK does not verify task closures or receipts. Use `npx @atcn/verify-cli` or the TypeScript SDK for that.
 
-`python -m atcn init` records whether this machine shares anonymous usage metrics. Reporting is off by default and needs `ATCN_USAGE_URL`; see the [usage data documentation](https://github.com/OWNER/atcn/blob/main/docs/USAGE_DATA.md).
+`python -m atcn init` records whether this machine shares anonymous usage metrics. Reporting is off by default and needs `ATCN_USAGE_URL`; see the [usage data documentation](https://github.com/fadnisnikhil/atcn/blob/main/docs/USAGE_DATA.md).
 
 Apache-2.0.
