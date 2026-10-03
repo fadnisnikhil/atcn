@@ -6,7 +6,7 @@ import { sendUsageReport } from "@atcn/usage";
 import { LocalRunnerError } from "./errors.js";
 import { loadJob, runJob, type JobResult } from "./job.js";
 
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const DEMO_JOB = fileURLToPath(new URL("../demos/calculator-fix/job.json", import.meta.url));
 
 const USAGE = `atcn-local ${VERSION}: capture a job, reconcile its costs, and verify the result on this machine.

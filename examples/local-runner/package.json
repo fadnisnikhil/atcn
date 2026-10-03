@@ -1,6 +1,6 @@
 {
   "name": "@atcn/local-runner",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Run an ATCN job on your machine: capture the work, reconcile its costs, and verify the signed result offline. No account or API needed.",
   "license": "Apache-2.0",
   "repository": {
