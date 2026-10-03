@@ -32,6 +32,22 @@ jobs:
           npx atcn-verify "$run_dir/task-closure.json" --keys "$run_dir/keys.json" \
             $(for p in "$run_dir"/obligation-*.json; do echo --obligation-package "$p"; done)
 
+  langgraph-example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: npm ci
+      - run: pip install -r examples/langgraph-paid-services/requirements.txt
+      - name: One LangGraph job, three paid services, verified closure
+        working-directory: examples/langgraph-paid-services
+        run: python graph.py
+
   python:
     runs-on: ubuntu-latest
     strategy:

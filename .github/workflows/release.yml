@@ -92,7 +92,7 @@ jobs:
         run: node scripts/release.mjs plan --strict
       - name: Publish new package versions
         run: |
-          for dir in $(node -p "require('./package.json').workspaces.join(' ')"); do
+          for dir in $(node -p "require('./package.json').workspaces.filter((d) => !require('./' + d + '/package.json').private).join(' ')"); do
             name=$(node -p "require('./$dir/package.json').name")
             version=$(node -p "require('./$dir/package.json').version")
             if npm view "$name@$version" version > /dev/null 2>&1; then

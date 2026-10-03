@@ -11,6 +11,7 @@
 //     In GitHub Actions the decision goes to the step outputs `action` and `version`.
 //     --strict fails on `bump`; the publish jobs use it so a changed package is never skipped silently.
 //
+// Private workspaces (the runnable examples) share the version but are never published.
 // Packages are compared by their unpacked files, not archive checksums, because gzip output differs between platforms.
 // `plan` needs built packages (npm ci builds them).
 import { execFileSync } from "node:child_process";
@@ -156,7 +157,7 @@ async function plan(strict) {
   const scratch = mkdtempSync(join(tmpdir(), "atcn-release-"));
   const statuses = [];
   try {
-    for (const workspace of workspaces) statuses.push(npmStatus(workspace, scratch));
+    for (const workspace of workspaces.filter(({ manifest }) => !manifest.private)) statuses.push(npmStatus(workspace, scratch));
     statuses.push(await pythonStatus(version, scratch));
   } finally {
     rmSync(scratch, { recursive: true, force: true });

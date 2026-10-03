@@ -10,15 +10,20 @@
     "packages/verifiers",
     "packages/subledger",
     "packages/sdk-ts",
+    "packages/adapter-a2a",
     "packages/verify-cli",
-    "examples/local-runner"
+    "examples/local-runner",
+    "examples/a2a-delegation",
+    "examples/x402-payments"
   ],
   "scripts": {
     "prepare": "npm run build",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspaces --if-present",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "demo": "atcn-local demo",
+    "demo:a2a": "npm start -w examples/a2a-delegation",
+    "demo:x402": "npm start -w examples/x402-payments",
     "check:versions": "node scripts/release.mjs check",
     "set-version": "node scripts/release.mjs set",
     "release:plan": "node scripts/release.mjs plan",

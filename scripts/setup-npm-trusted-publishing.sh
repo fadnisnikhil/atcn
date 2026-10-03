@@ -19,7 +19,7 @@ trap 'rm -rf "$npm_dir"' EXIT
 npm install --silent --prefix "$npm_dir" "npm@$NPM_VERSION" || exit 1
 npm_cli="$npm_dir/node_modules/.bin/npm"
 
-packages=$(node -p "require('./package.json').workspaces.map((dir) => require('./' + dir + '/package.json').name).join(' ')")
+packages=$(node -p "require('./package.json').workspaces.map((dir) => require('./' + dir + '/package.json')).filter((p) => !p.private).map((p) => p.name).join(' ')")
 failed=()
 for name in $packages; do
   echo "== $name"

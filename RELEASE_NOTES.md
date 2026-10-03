@@ -1,3 +1,9 @@
+# Unreleased: A2A adapter and ecosystem examples
+
+- **`@atcn/adapter-a2a` (new package, not on npm yet).** Use it from this repository. Turns an A2A v1.0 task stream into signed obligation events: `WORKING` becomes `obligation.started`, evidence-tagged artifacts become `evidence.submitted`, and `COMPLETED` becomes `completion.proposed`. It works with `AtcnClient` (hosted API) or with the local runner's network through `localObligationClient`. `obligationIdFromMetadata` reads the obligation id that `obligationTaskMetadata` puts on an A2A message.
+- **Examples.** [A2A delegation](examples/a2a-delegation) (`npm run demo:a2a`), [LangGraph paid services](examples/langgraph-paid-services), and [x402 payments](examples/x402-payments) (`npm run demo:x402`). They are private workspaces, so they are tested in CI but never published.
+- No published package changed, so this publishes nothing to npm or PyPI.
+
 # ATCN 1.3.0: first public release
 
 This is the first public release of the ATCN libraries. With them you can capture an agent job, reconcile its costs, and verify the result on your own machine. You don't need an account or a hosted API.

@@ -1,0 +1,24 @@
+{
+  "name": "@atcn/example-a2a-delegation",
+  "version": "1.3.2",
+  "private": true,
+  "description": "An orchestrator delegates paid work to two A2A agents over HTTP; ATCN records the delegations and charges and verifies the closure offline",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.3.0",
+    "@atcn/adapter-a2a": "1.3.2",
+    "@atcn/core": "1.3.2",
+    "@atcn/local-runner": "1.3.2",
+    "@atcn/schema": "1.3.2",
+    "@atcn/sdk": "1.3.2",
+    "@atcn/subledger": "1.3.2",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
+  }
+}

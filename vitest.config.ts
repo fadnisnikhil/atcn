@@ -13,6 +13,8 @@ export default defineConfig({
       "@atcn/verifiers": source("./packages/verifiers/src/index.ts"),
       "@atcn/subledger": source("./packages/subledger/src/index.ts"),
       "@atcn/sdk": source("./packages/sdk-ts/src/index.ts"),
+      "@atcn/adapter-a2a": source("./packages/adapter-a2a/src/index.ts"),
+      "@atcn/local-runner": source("./examples/local-runner/src/index.ts"),
     },
   },
   test: {

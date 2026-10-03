@@ -33,6 +33,16 @@ Then run your own job file: `npx atcn-local run job.json`. See the [quickstart](
 
 **What the runner does not do.** It evaluates the evidence a provider submits (test, lint and patch reports) against the agreed policy. It does not run the delivered code. Settlement is simulated and labeled `settlement_simulated_in_sandbox`: no money moves and no payment is confirmed.
 
+## Examples in agent ecosystems
+
+Each example runs locally and ends with a signed closure that verifies offline.
+
+| Example | Run | What it shows |
+| --- | --- | --- |
+| [A2A delegation](examples/a2a-delegation) | `npm run demo:a2a` | An orchestrator delegates to two A2A v1.0 agents over HTTP: one paid through an obligation whose events the agent signs, one that bills by A2A task id. |
+| [LangGraph paid services](examples/langgraph-paid-services) | `python graph.py` | One customer job in a LangGraph graph calls three paid services; their bills are matched to the nodes that caused them. |
+| [x402 payments](examples/x402-payments) | `npm run demo:x402` | Three x402 v2 purchases; each payment record is linked to the work it bought, and a pending settlement stays unresolved. |
+
 ## Packages
 
 | Package | What it is |
@@ -43,6 +53,7 @@ Then run your own job file: `npx atcn-local run job.json`. See the [quickstart](
 | [`@atcn/subledger`](packages/subledger) | Agent Work Subledger: charge matching, exceptions, roll-up, signed receipts and closures, offline verification |
 | [`@atcn/usage`](packages/usage) | Opt-in usage reporting, off by default ([details](docs/USAGE_DATA.md)) |
 | [`@atcn/sdk`](packages/sdk-ts) | TypeScript SDK: event signing, API clients, capture queue, verifiers |
+| [`@atcn/adapter-a2a`](packages/adapter-a2a) | Turns an A2A v1.0 task stream into signed obligation events, against the hosted API or the local runner (in this repository; not on npm yet) |
 | [`@atcn/verify-cli`](packages/verify-cli) | `atcn-verify`: offline verifier for closures, receipts and closure packages |
 | [`@atcn/local-runner`](examples/local-runner) | `atcn-local`: runs a job end to end on your machine |
 | [`atcn` (PyPI)](packages/sdk-python) | Python SDK: canonical JSON, Ed25519 event signing, webhooks, API clients |
