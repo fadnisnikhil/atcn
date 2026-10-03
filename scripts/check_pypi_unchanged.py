@@ -57,7 +57,7 @@ def main() -> int:
     if not changed:
         print(f"atcn {version}: unchanged since it was published")
         return 0
-    print(f"{level}atcn {version}: {', '.join(changed)} differ from the published atcn {version}. Bump the version in {PACKAGE_DIR}/pyproject.toml.")
+    print(f"{level}atcn {version} is already published, but these files changed: {', '.join(changed)}. Bump the version in {PACKAGE_DIR}/pyproject.toml.")
     return 1 if strict else 0
 
 

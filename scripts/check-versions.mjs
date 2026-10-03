@@ -2,9 +2,12 @@
 // Release guards for the npm packages:
 //   1. Every internal @atcn/* dependency must pin the version that package has in this repository.
 //   2. A version that is already on npm must contain exactly the published files; otherwise the version needs a bump.
+// Check 2 compares the unpacked files, not the .tgz checksum, because gzip output differs between platforms.
 // Packages must be built first (npm ci builds them). With --strict, check 2 fails instead of warning.
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const strict = process.argv.includes("--strict");
 const inGitHubActions = process.env.GITHUB_ACTIONS === "true";
@@ -25,33 +28,60 @@ for (const { dir, manifest } of workspaces) {
   }
 }
 
-function npm(args) {
-  return execFileSync("npm", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+function npm(args, cwd = ".") {
+  return execFileSync("npm", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 }
 
-/** The published tarball's integrity, or null if this version is not on npm. */
-function publishedIntegrity(id) {
+function isPublished(id) {
   try {
-    return npm(["view", id, "dist.integrity"]).trim() || null;
+    return npm(["view", id, "version"]).trim() !== "";
   } catch (error) {
-    if (String(error.stderr).includes("E404")) return null;
+    if (String(error.stderr).includes("E404")) return false;
     throw error;
   }
 }
 
-for (const { dir, manifest } of workspaces) {
-  const id = `${manifest.name}@${manifest.version}`;
-  const published = publishedIntegrity(id);
-  if (published === null) {
-    console.log(`${id}: not on npm yet; it will be published`);
-    continue;
+/** Runs `npm pack <args>` in `cwd`, unpacks the tarball inside `destination`, and returns the unpacked directory. */
+function packAndUnpack(args, cwd, destination) {
+  mkdirSync(destination, { recursive: true });
+  const [{ filename }] = JSON.parse(npm(["pack", ...args, "--pack-destination", destination, "--json"], cwd));
+  execFileSync("tar", ["-xzf", join(destination, filename), "-C", destination]);
+  return join(destination, "package");
+}
+
+function filesIn(dir) {
+  return readdirSync(dir, { recursive: true }).filter((name) => statSync(join(dir, name)).isFile());
+}
+
+function changedFiles(publishedDir, builtDir) {
+  const names = [...new Set([...filesIn(publishedDir), ...filesIn(builtDir)])].sort();
+  return names.filter((name) => {
+    const published = join(publishedDir, name);
+    const built = join(builtDir, name);
+    return !existsSync(published) || !existsSync(built) || !readFileSync(published).equals(readFileSync(built));
+  });
+}
+
+const scratch = mkdtempSync(join(tmpdir(), "atcn-check-versions-"));
+try {
+  for (const { dir, manifest } of workspaces) {
+    const id = `${manifest.name}@${manifest.version}`;
+    if (!isPublished(id)) {
+      console.log(`${id}: not on npm yet; it will be published`);
+      continue;
+    }
+    const scratchDir = join(scratch, manifest.name.replace("/", "__"));
+    const publishedDir = packAndUnpack([id], scratch, join(scratchDir, "published"));
+    const builtDir = packAndUnpack(["--workspace", dir], ".", join(scratchDir, "built"));
+    const changed = changedFiles(publishedDir, builtDir);
+    if (changed.length === 0) {
+      console.log(`${id}: unchanged since it was published`);
+    } else {
+      (strict ? errors : warnings).push(`${id} is already published, but these files changed: ${changed.join(", ")}. Bump the version in ${dir}/package.json and the pins that point at it.`);
+    }
   }
-  const built = JSON.parse(npm(["pack", "--dry-run", "--json", "--workspace", dir]))[0].integrity;
-  if (built === published) {
-    console.log(`${id}: unchanged since it was published`);
-  } else {
-    (strict ? errors : warnings).push(`${id}: the files differ from the published ${id}. Bump the version in ${dir}/package.json and the pins that point at it.`);
-  }
+} finally {
+  rmSync(scratch, { recursive: true, force: true });
 }
 
 for (const message of warnings) console.log(inGitHubActions ? `::warning::${message}` : `warning: ${message}`);
