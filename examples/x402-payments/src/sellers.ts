@@ -19,7 +19,7 @@ interface PaidResource {
   body: unknown;
 }
 
-/** Three sellers. The screenshot's settlement is broadcast but not confirmed, so the buyer gets a 402 and no result. */
+/** Three sellers. Foxtrot Render's settlement is broadcast but not confirmed, so the buyer gets a 402 and no result. */
 export const RESOURCES: PaidResource[] = [
   {
     path: "/delta/company-profile",

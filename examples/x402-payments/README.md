@@ -26,7 +26,7 @@ open exceptions: 1
   missing_receipt: billed 10 USD with no completion receipt recorded
 ```
 
-The screenshot's settlement was broadcast but not confirmed, so the seller returned no result. The transaction may still confirm. ATCN keeps the USD 0.10 unresolved and flags it as billed without delivery, so someone checks the chain and asks for a refund if needed.
+Foxtrot Render's settlement was broadcast but not confirmed, so the seller returned no result. The transaction may still confirm. ATCN keeps the USD 0.10 unresolved and flags it as billed without delivery, so someone checks the chain and asks for a refund if needed.
 
 ## How a purchase is recorded
 
