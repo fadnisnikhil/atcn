@@ -27,6 +27,8 @@ offline verification
   VALID   closure package of obl_...
 ```
 
+Without cloning, the same demo runs straight from npm: `npx @atcn/local-runner demo`. The packages are on npm under [`@atcn`](https://www.npmjs.com/org/atcn), and the Python SDK is `pip install atcn`.
+
 Then run your own job file: `npx atcn-local run job.json`. See the [quickstart](docs/QUICKSTART.md) and the [job file format](docs/JOB_FILE.md).
 
 **What the runner does not do.** It evaluates the evidence a provider submits (test, lint and patch reports) against the agreed policy. It does not run the delivered code. Settlement is simulated and labeled `settlement_simulated_in_sandbox`: no money moves and no payment is confirmed.
