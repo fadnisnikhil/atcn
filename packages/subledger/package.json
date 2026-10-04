@@ -1,6 +1,6 @@
 {
   "name": "@atcn/subledger",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Agent Work Subledger: deterministic attribution, roll-up, exceptions, signed receipts and closures, and offline verification",
   "license": "Apache-2.0",
   "repository": {
@@ -33,8 +33,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/core": "1.4.0",
-    "@atcn/schema": "1.4.0",
+    "@atcn/core": "1.4.1",
+    "@atcn/schema": "1.4.1",
     "zod": "^4.1.0"
   }
 }

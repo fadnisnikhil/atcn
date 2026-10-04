@@ -13,7 +13,7 @@ import { ASSURANCE_LABELS, ATTESTABLE_FIELDS, CLAIM_ASSERTERS, Currency, DELIVER
 export const SUBLEDGER_SCHEMA_VERSION = "1.4" as const;
 export const SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS = ["1.2", "1.3", "1.4"] as const;
 /** Must equal this package's version in package.json (checked by a test). */
-export const SUBLEDGER_VERIFIER_VERSION = "1.4.0" as const;
+export const SUBLEDGER_VERIFIER_VERSION = "1.4.1" as const;
 export const RECEIPT_DOCUMENT_TYPE = "atcn.subledger.receipt" as const;
 export const CLOSURE_DOCUMENT_TYPE = "atcn.subledger.closure" as const;
 export const RESPONSE_STATEMENT_TYPE = "atcn.subledger.receipt_response" as const;

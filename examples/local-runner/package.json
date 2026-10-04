@@ -1,6 +1,6 @@
 {
   "name": "@atcn/local-runner",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Run an ATCN job on your machine: capture the work, reconcile its costs, and verify the signed result offline. No account or API needed.",
   "license": "Apache-2.0",
   "repository": {
@@ -37,12 +37,12 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/core": "1.4.0",
-    "@atcn/schema": "1.4.0",
-    "@atcn/sdk": "1.4.0",
-    "@atcn/subledger": "1.4.0",
-    "@atcn/usage": "1.4.0",
-    "@atcn/verifiers": "1.4.0",
+    "@atcn/core": "1.4.1",
+    "@atcn/schema": "1.4.1",
+    "@atcn/sdk": "1.4.1",
+    "@atcn/subledger": "1.4.1",
+    "@atcn/usage": "1.4.1",
+    "@atcn/verifiers": "1.4.1",
     "zod": "^4.1.0"
   }
 }

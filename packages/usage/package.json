@@ -1,6 +1,6 @@
 {
   "name": "@atcn/usage",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Opt-in anonymous usage reporting for ATCN: the saved choice, the report format, and the sender. Off by default.",
   "license": "Apache-2.0",
   "repository": {
