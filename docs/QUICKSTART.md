@@ -49,7 +49,7 @@ The runner writes each run to `.atcn-local/runs/<time>-<task>/`:
 It also prints the verifier command for that run. It looks like this:
 
 ```bash
-npx atcn-verify .atcn-local/runs/<run>/task-closure.json \
+npx @atcn/verify-cli .atcn-local/runs/<run>/task-closure.json \
   --keys .atcn-local/runs/<run>/keys.json \
   --obligation-package .atcn-local/runs/<run>/obligation-<id>.json
 ```

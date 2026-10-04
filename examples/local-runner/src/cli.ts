@@ -46,7 +46,7 @@ function printResult(result: JobResult): void {
   const rel = (path: string) => relative(process.cwd(), path) || ".";
   console.log(`\nfiles in ${rel(result.files.dir)}: task-closure.json, keys.json, ledger.json${result.files.packages.length ? ", obligation-*.json" : ""}`);
   const packageArgs = result.files.packages.map((p) => ` --obligation-package ${rel(p)}`).join("");
-  console.log(`re-verify: npx atcn-verify ${rel(result.files.closure)} --keys ${rel(result.files.keys)}${packageArgs}`);
+  console.log(`re-verify: npx @atcn/verify-cli ${rel(result.files.closure)} --keys ${rel(result.files.keys)}${packageArgs}`);
   console.log("\nThe runner evaluated submitted evidence; it did not execute the delivered code. Settlement was simulated.");
 }
 
