@@ -178,6 +178,7 @@ export class LocalSubledger {
       expected_delivery: iso(input.expected_delivery),
       downstream_visibility: input.downstream_visibility,
       retrospective: input.retrospective,
+      ...(input.execution ? { execution: input.execution } : {}),
       created_at: now(),
     };
     this.delegations.push(delegation);

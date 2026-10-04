@@ -90,6 +90,63 @@
       "canonical": "{\"corrections\":[{\"field\":\"delivery.status\",\"proposed_value\":\"partial_completion\",\"reason\":\"file 3 missing\"}],\"document_type\":\"atcn.subledger.receipt_response\",\"evidence\":[{\"digest\":null,\"evidence_type\":\"delivery_log\",\"uri\":\"https://provider.example/delivery/7\"}],\"fields\":[],\"issuer_operator_id\":\"ten_01J00000000000000000000001\",\"note\":\"café: two of three files\",\"receipt_digest\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"receipt_id\":\"rcp_01J00000000000000000000002\",\"receipt_revision\":1,\"response_type\":\"propose_correction\"}",
       "digest": "sha256:633530c26ed9133457be0a7d4a1417f24c73dc17fcbd20f58901cfb462390e15",
       "signature": "XKtJa41QABDVCDvyKIGqNejsQAvqHaKqh_yanIrNWPcehrnLCNW28L621ar__eHdqP2-64yvZnwbuJD0efi4Aw"
+    },
+    {
+      "input": {
+        "receipt": {
+          "receipt_id": "rcp_01J00000000000000000000003",
+          "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "revision": 1,
+          "issuer_operator_id": "ten_01J00000000000000000000001"
+        },
+        "response_type": "signed_attestation",
+        "fields": [
+          "delivery.status"
+        ],
+        "execution": {
+          "execution_id": "run_01J00000000000000000000001",
+          "execution_digest": "sha256:9e282402ebfefeb4924e034733742b7cd346b022313e3e7f5b77d93651d11952"
+        },
+        "issued_at": "2026-10-01T00:00:00.000Z",
+        "expires_at": "2026-11-01T00:00:00.000Z",
+        "refs": [
+          {
+            "relation": "revokes",
+            "attestation_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "reason": "attested the wrong run"
+          }
+        ]
+      },
+      "statement": {
+        "document_type": "atcn.subledger.receipt_response",
+        "receipt_id": "rcp_01J00000000000000000000003",
+        "receipt_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "receipt_revision": 1,
+        "issuer_operator_id": "ten_01J00000000000000000000001",
+        "response_type": "signed_attestation",
+        "fields": [
+          "delivery.status"
+        ],
+        "note": null,
+        "evidence": [],
+        "corrections": [],
+        "execution": {
+          "execution_id": "run_01J00000000000000000000001",
+          "execution_digest": "sha256:9e282402ebfefeb4924e034733742b7cd346b022313e3e7f5b77d93651d11952"
+        },
+        "issued_at": "2026-10-01T00:00:00.000Z",
+        "expires_at": "2026-11-01T00:00:00.000Z",
+        "refs": [
+          {
+            "relation": "revokes",
+            "attestation_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "reason": "attested the wrong run"
+          }
+        ]
+      },
+      "canonical": "{\"corrections\":[],\"document_type\":\"atcn.subledger.receipt_response\",\"evidence\":[],\"execution\":{\"execution_digest\":\"sha256:9e282402ebfefeb4924e034733742b7cd346b022313e3e7f5b77d93651d11952\",\"execution_id\":\"run_01J00000000000000000000001\"},\"expires_at\":\"2026-11-01T00:00:00.000Z\",\"fields\":[\"delivery.status\"],\"issued_at\":\"2026-10-01T00:00:00.000Z\",\"issuer_operator_id\":\"ten_01J00000000000000000000001\",\"note\":null,\"receipt_digest\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"receipt_id\":\"rcp_01J00000000000000000000003\",\"receipt_revision\":1,\"refs\":[{\"attestation_digest\":\"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"reason\":\"attested the wrong run\",\"relation\":\"revokes\"}],\"response_type\":\"signed_attestation\"}",
+      "digest": "sha256:f4839d189a371531782b945d494462c209b57a9988344b149315d61772b3c81d",
+      "signature": "TgkbCF-2xoTAWDQJqGtiMMvQ26nliShYzU6mJbJhWD6Q-y35FlwNA9L4ijdne9whcouQCTxlI8sZIsR_KpJBCQ"
     }
   ],
   "countersignature": {
@@ -104,5 +161,33 @@
       }
     },
     "signature": "jUnhhTUE28I9wdyO15cFLm1aB9Lo-3r6d1cif7HPFLDIvLr8GngoKNCYtlTftNwxP1b7ARBUkwLga-PywmFtBA"
+  },
+  "execution_binding": {
+    "descriptor": {
+      "execution_id": "run_01J00000000000000000000001",
+      "protocol": {
+        "name": "a2a",
+        "task_id": "task-7",
+        "context_id": "ctx-7"
+      },
+      "agent": {
+        "agent_id": "agt_01J00000000000000000000002",
+        "agent_version": "2.1.0",
+        "card_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "model": {
+          "provider": "example",
+          "name": "coder",
+          "version": "2026-09"
+        }
+      },
+      "skill": {
+        "namespace": "a2a",
+        "skill_id": "code-fix"
+      }
+    },
+    "binding": {
+      "execution_id": "run_01J00000000000000000000001",
+      "execution_digest": "sha256:9e282402ebfefeb4924e034733742b7cd346b022313e3e7f5b77d93651d11952"
+    }
   }
 }

@@ -12,7 +12,7 @@ import {
 
 const USAGE = `usage: atcn-verify <document.json> --keys <published-keys.json> [--previous <previous-revision.json>]
                    [--operator-keys <operator-keys.json>] [--require-operator-signature]
-                   [--obligation-package <closure-package.json> ...] [--json]
+                   [--obligation-package <closure-package.json> ...] [--at <ISO-8601 time>] [--json]
 
 Verifies offline, without contacting the service:
   - ATCN closure packages (obligations): signatures, key validity, event references,
@@ -21,7 +21,7 @@ Verifies offline, without contacting the service:
     delegation lineage, reversals, allocation sums and versions, roll-up totals,
     provider response signatures, and the version chain.
   - Subledger provider receipts (atcn.subledger.receipt): signature, schema, reversals,
-    totals, field disclosure, and the revision chain.
+    totals, field disclosure, the revision chain, and expiry.
 --keys accepts a JSON array of public key records or the /v1/service/keys response ({"items": [...]}).
 --previous checks the chain link to the prior receipt revision or closure version.
 --operator-keys checks countersignatures made with the operator's own keys
@@ -29,6 +29,7 @@ Verifies offline, without contacting the service:
 --obligation-package (repeatable) cross-checks a task closure's obligation-backed delegations against
   the obligations' closure packages (GET /v1/exports/{obligation_id}): each package must verify, and its
   journal must produce exactly the costs the closure recorded from the clearing network.
+--at checks a provider receipt's expires_at against that time instead of now.
 Subledger schema versions supported: ${SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS.join(", ")} (atcn-verify ${SUBLEDGER_VERIFIER_VERSION}).
 Exit code 0 = valid, 1 = invalid, 2 = usage or input error, 3 = unsupported schema version (upgrade atcn-verify).`;
 
@@ -67,6 +68,7 @@ function main(): number {
         "operator-keys": { type: "string" },
         "require-operator-signature": { type: "boolean" },
         "obligation-package": { type: "string", multiple: true },
+        at: { type: "string" },
         json: { type: "boolean" },
         help: { type: "boolean" },
       },
@@ -77,6 +79,11 @@ function main(): number {
   }
   if (parsed.values.help || parsed.positionals.length !== 1 || !parsed.values.keys) {
     console.error(USAGE);
+    return 2;
+  }
+  const at = parsed.values.at;
+  if (at !== undefined && Number.isNaN(Date.parse(at))) {
+    console.error(`--at must be an ISO 8601 time, got ${at}\n\n${USAGE}`);
     return 2;
   }
   let report: { valid: boolean; unsupported_schema_version?: string; checks: { name: string; ok: boolean; details: string[] }[] };
@@ -95,6 +102,7 @@ function main(): number {
         operatorKeys,
         requireOperatorSignature: parsed.values["require-operator-signature"],
         obligationPackages,
+        at: at === undefined ? undefined : new Date(at).toISOString(),
       });
       report = result;
       label = result.document_type === "atcn.subledger.receipt" ? "provider receipt" : "task closure";

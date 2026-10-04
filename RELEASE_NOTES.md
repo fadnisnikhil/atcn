@@ -1,3 +1,30 @@
+# ATCN 1.4.0: runs, skills, expiry and revocation for attestations
+
+An attestation about agent work can now say exactly which run, agent version and skill it judged, how long it holds, and which earlier attestation it revokes or disputes. Verifiers check all of it offline. Everything is additive: documents and attestations made before 1.4.0 verify byte for byte.
+
+- **Runs and skills.**
+  - Obligation terms can name a `skill` (terms `schema_version` `1.1`; `buildTerms({ skill })` sets it).
+  - The working agent declares its run in `obligation.started`: `execution_id`, A2A task and context ids, its own agent version, agent card digest, model and config digest, and the skill. The network refuses a run of any skill other than the agreed one.
+  - `@atcn/adapter-a2a`: pass `execution: { agentCard, skillId }` and the bridge declares the run. `obligationTaskMetadata(id, { skillId })` and `skillIdFromMetadata` carry the requested skill. The [A2A example](examples/a2a-delegation) agrees `a2a/code-fix` and prints the run.
+- **Attestations (`@atcn/verifiers`).** New `external_attestation@1.1.0`. It also checks the cited run (declared by the counterparty, performing the agreed skill), the cited evidence, `issued_at` and `expires_at`, and whether the signing key was revoked first. Each refusal carries a `code`. Policies pinned to `1.0.0` behave as before.
+- **Subledger documents (`schema_version` `1.4`).**
+  - A delegation can record its run, and it appears on the receipt and the closure.
+  - Provider response statements can cite the run and carry `issued_at`, `expires_at` and `refs`. Only the same provider key can revoke a statement.
+  - Revoked and expired statements stay visible, labeled `revoked` and `expired`.
+  - Receipts get an `expiry` check. `atcn-verify --at <time>` checks against a time other than now.
+  - The SDKs (`respond()` in TypeScript, `build_response_statement` and `ReceiptLinkClient.respond` in Python) take the new fields. `executionBinding` / `execution_binding` compute how a statement cites a run.
+- **Adversarial fixtures.** [`packages/verifiers/test-vectors/attestations.json`](packages/verifiers/test-vectors/attestations.json): undeclared or altered runs, the wrong skill, a missing run, expired and future-dated attestations, the wrong obligation, a stripped `expires_at`, a revoked key, revocation by another signer, and unknown references. TypeScript replays every case. Python checks the signatures, digests and run bindings.
+- **JSON Schemas.** [`schemas/1.1/`](packages/schema/schemas/1.1/) (terms, the signed external attestation and the run descriptor) and [`schemas/1.4/`](packages/schema/schemas/1.4/) (subledger). Earlier directories are unchanged.
+
+## Compatibility
+
+- **Subledger 1.4.** Producers on 1.4.0 sign receipts and closures as `1.4`, and 1.3.x verifiers report them as an unsupported schema version (`atcn-verify` exit code `3`). Upgrade verifiers before producers. Verifiers 1.4.0 accept `1.2`, `1.3` and `1.4`. A document declaring `1.2` or `1.3` that uses `1.4` fields fails the `schema` check.
+- **Terms 1.1.** Terms with a `skill` declare `1.1`, and a 1.3.x `@atcn/core` rejects them. Terms without one are unchanged.
+- **Event wire format.** Unchanged at `1.0`. The run lives in `obligation.started` data, which older consumers keep as received.
+- **Out of scope for 1.4.0.** Witness roles and independence, and detection of conflicting signed accounts, come in a later release. A dispute ref is recorded but does not change the clearing outcome yet.
+
+Details: [COMPATIBILITY.md](packages/schema/COMPATIBILITY.md#runs-skills-and-attestation-expiry-and-revocation-140).
+
 # Unreleased: A2A adapter and ecosystem examples
 
 - **`@atcn/adapter-a2a` (new package, not on npm yet).** Use it from this repository. Turns an A2A v1.0 task stream into signed obligation events: `WORKING` becomes `obligation.started`, evidence-tagged artifacts become `evidence.submitted`, and `COMPLETED` becomes `completion.proposed`. It works with `AtcnClient` (hosted API) or with the local runner's network through `localObligationClient`. `obligationIdFromMetadata` reads the obligation id that `obligationTaskMetadata` puts on an A2A message.

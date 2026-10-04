@@ -25,7 +25,22 @@ await bridge.handle(StreamResponse.toJSON({ payload: { $case: "statusUpdate", va
 
 `client` is either an `AtcnClient` from `@atcn/sdk` (hosted API) or `localObligationClient(network)` for the in-memory network from `@atcn/local-runner`, which needs no account. The bridge reads A2A wire JSON, so it works with any A2A SDK; with `@a2a-js/sdk`, `StreamResponse.toJSON` produces it.
 
-The delegating agent puts `obligationTaskMetadata(obligationId)` on the A2A message so the worker knows which obligation the task is for.
+The delegating agent puts `obligationTaskMetadata(obligationId)` on the A2A message so the worker knows which obligation the task is for. `obligationTaskMetadata(obligationId, { skillId })` also names the AgentSkill it wants; the worker reads it with `skillIdFromMetadata`.
+
+Pass `execution` to describe the run in `obligation.started`, so attestations can cite exactly which run, agent version and skill they judged:
+
+```ts
+import { AgentCard } from "@a2a-js/sdk";
+
+const bridge = new A2AObligationBridge({
+  client,
+  worker: signer,
+  obligationId,
+  execution: { agentCard: AgentCard.toJSON(card), skillId: skillIdFromMetadata(metadata) ?? undefined },
+});
+```
+
+The run's `execution_id` is `a2a:<task id>`. It records the A2A task and context ids, the card's `version` and digest, and the skill (namespace `a2a`). Optional `model` and `configDigest` are recorded as given; the agent declares them itself. When the obligation's terms name a skill, the network refuses a run of any other skill. After `obligation.started`, `bridge.execution` holds the descriptor; an attestation cites it as `executionBinding(bridge.execution)` from `@atcn/schema`.
 
 A runnable example with two A2A agents over HTTP is in [`examples/a2a-delegation`](../../examples/a2a-delegation).
 

@@ -1,19 +1,28 @@
-import type { SignedEvent } from "@atcn/schema";
+import { digestOf, type ExecutionDescriptor, type SignedEvent } from "@atcn/schema";
 import { buildEvidenceEnvelope, type EventSigner } from "@atcn/sdk";
-import type { A2AArtifact, A2APart, A2AStreamResponse, A2ATaskState } from "./types.js";
+import type { A2AAgentCard, A2AArtifact, A2APart, A2AStreamResponse, A2ATaskState } from "./types.js";
 
 /** Metadata namespace the bridge reads on A2A messages, tasks and artifacts. */
 export const ATCN_METADATA_KEY = "atcn";
 
+/** SkillRef namespace for A2A: the skill_id is an AgentSkill id from the worker's agent card. */
+export const A2A_SKILL_NAMESPACE = "a2a";
+
 /** Metadata a delegating agent attaches to the A2A message (or task) it sends for an ATCN obligation. */
-export function obligationTaskMetadata(obligationId: string): Record<string, unknown> {
-  return { [ATCN_METADATA_KEY]: { obligation_id: obligationId } };
+export function obligationTaskMetadata(obligationId: string, options: { skillId?: string } = {}): Record<string, unknown> {
+  return { [ATCN_METADATA_KEY]: { obligation_id: obligationId, ...(options.skillId ? { skill_id: options.skillId } : {}) } };
 }
 
 /** The obligation id written by obligationTaskMetadata, or null when the metadata carries none. */
 export function obligationIdFromMetadata(metadata: Record<string, unknown> | undefined): string | null {
   const value = metadata?.[ATCN_METADATA_KEY] as { obligation_id?: unknown } | undefined;
   return typeof value?.obligation_id === "string" ? value.obligation_id : null;
+}
+
+/** The skill id written by obligationTaskMetadata, or null when the metadata names none. */
+export function skillIdFromMetadata(metadata: Record<string, unknown> | undefined): string | null {
+  const value = metadata?.[ATCN_METADATA_KEY] as { skill_id?: unknown } | undefined;
+  return typeof value?.skill_id === "string" ? value.skill_id : null;
 }
 
 /**
@@ -63,6 +72,17 @@ export interface BridgeOptions {
   /** Signer for the remote (working) agent, i.e. the obligation's counterparty. */
   worker: EventSigner;
   obligationId: string;
+  /**
+   * Describes the run in obligation.started, so attestations can cite it: the A2A task and context ids, the agent
+   * card's version and digest, and the skill. Without it, obligation.started carries no run.
+   */
+  execution?: {
+    agentCard: A2AAgentCard;
+    agentCardUrl?: string;
+    skillId?: string;
+    model?: { provider: string; name: string; version: string };
+    configDigest?: string;
+  };
 }
 
 /**
@@ -75,16 +95,18 @@ export class A2AObligationBridge {
   private started = false;
   private completed = false;
   private readonly pendingChunks = new Map<string, A2APart[]>();
+  /** The run this bridge declared in obligation.started, once it has. */
+  execution: ExecutionDescriptor | null = null;
 
   constructor(private readonly options: BridgeOptions) {}
 
   async handle(response: A2AStreamResponse): Promise<BridgeAction[]> {
     if ("task" in response) {
-      const actions = await this.onState(response.task.status.state);
+      const actions = await this.onState(response.task.status.state, response.task.id, response.task.contextId);
       for (const artifact of response.task.artifacts ?? []) actions.push(await this.onArtifact(artifact));
       return actions;
     }
-    if ("statusUpdate" in response) return this.onState(response.statusUpdate.status.state);
+    if ("statusUpdate" in response) return this.onState(response.statusUpdate.status.state, response.statusUpdate.taskId, response.statusUpdate.contextId);
     if ("artifactUpdate" in response) {
       const update = response.artifactUpdate;
       const previous = update.append ? (this.pendingChunks.get(update.artifact.artifactId) ?? []) : [];
@@ -99,14 +121,16 @@ export class A2AObligationBridge {
     return [];
   }
 
-  private async onState(state: A2ATaskState): Promise<BridgeAction[]> {
+  private async onState(state: A2ATaskState, taskId: string, contextId: string): Promise<BridgeAction[]> {
     const { client, worker, obligationId } = this.options;
     const actions: BridgeAction[] = [];
     if ((state === "TASK_STATE_WORKING" || state === "TASK_STATE_COMPLETED") && !this.started) {
       const current = (await client.getObligation(obligationId)) as { state: string };
       if (current.state === "accepted") {
-        const signed = worker.sign("obligation.started", obligationId);
+        const execution = this.describeRun(taskId, contextId);
+        const signed = worker.sign("obligation.started", obligationId, execution ? { execution } : {});
         await client.appendEvent(obligationId, signed);
+        this.execution = execution;
         actions.push({ kind: "event", eventType: "obligation.started", eventId: signed.payload.event_id });
       }
       this.started = true;
@@ -121,6 +145,25 @@ export class A2AObligationBridge {
       actions.push({ kind: "skipped", detail: `${state} is not recorded as a payment fact; the issuer may cancel or the policy will decide` });
     }
     return actions;
+  }
+
+  private describeRun(taskId: string, contextId: string): ExecutionDescriptor | null {
+    const options = this.options.execution;
+    if (!options) return null;
+    return {
+      execution_id: `a2a:${taskId}`,
+      protocol: { name: "a2a", task_id: taskId, ...(contextId ? { context_id: contextId } : {}) },
+      agent: {
+        agent_id: this.options.worker.actorId,
+        agent_version: options.agentCard.version,
+        card_digest: digestOf(JSON.parse(JSON.stringify(options.agentCard))),
+        ...(options.model ? { model: options.model } : {}),
+        ...(options.configDigest ? { config_digest: options.configDigest } : {}),
+      },
+      ...(options.skillId
+        ? { skill: { namespace: A2A_SKILL_NAMESPACE, skill_id: options.skillId, ...(options.agentCardUrl ? { agent_card_url: options.agentCardUrl } : {}) } }
+        : {}),
+    };
   }
 
   private async onArtifact(artifact: A2AArtifact): Promise<BridgeAction> {

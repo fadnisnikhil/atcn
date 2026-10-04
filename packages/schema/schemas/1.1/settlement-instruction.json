@@ -1,0 +1,83 @@
+{
+  "$id": "https://schemas.atcn.dev/1.1/settlement-instruction.json",
+  "title": "settlement-instruction",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "instruction_id": {
+      "type": "string"
+    },
+    "obligation_id": {
+      "type": "string",
+      "pattern": "^obl_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "decision_id": {
+      "type": "string",
+      "pattern": "^dec_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "beneficiary_party_id": {
+      "type": "string"
+    },
+    "beneficiary_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "amount_minor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "adapter": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "sandbox",
+        "stripe"
+      ]
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "submitted",
+        "processing",
+        "settled",
+        "failed",
+        "returned",
+        "refunded",
+        "unknown"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    }
+  },
+  "required": [
+    "instruction_id",
+    "obligation_id",
+    "decision_id",
+    "beneficiary_party_id",
+    "beneficiary_ref",
+    "currency",
+    "amount_minor",
+    "adapter",
+    "idempotency_key",
+    "expires_at",
+    "status",
+    "created_at"
+  ]
+}

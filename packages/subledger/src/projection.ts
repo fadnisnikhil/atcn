@@ -1,4 +1,4 @@
-import { digestOf } from "@atcn/schema";
+import { digestOf, resolveAttestations, type AttestationItem } from "@atcn/schema";
 import { computeRollup, costSign, type Rollup } from "./rollup.js";
 import {
   CLOSURE_DOCUMENT_TYPE,
@@ -45,6 +45,33 @@ export type DelegationRecord = ClosureDelegation & { root_task_id: string; share
 export function labelClaims(claims: DeliveryClaim[]): DeliveryClaim[] {
   const superseded = new Set(claims.map((c) => c.supersedes_event_id).filter((id): id is string => id !== null));
   return claims.map((c) => (superseded.has(c.event_id) && !c.assurance.includes("superseded") ? { ...c, assurance: [...c.assurance, "superseded"] } : c));
+}
+
+/** A response as an attestation. Only a key-signed statement has a signer, so only it can revoke or be revoked. */
+export function responseAttestation(response: ResponseRecord): AttestationItem {
+  const s = response.statement;
+  return {
+    digest: response.statement_digest,
+    signer: response.assurance.includes("provider_key_signed") ? response.provider_id : null,
+    issued_at: s.issued_at,
+    expires_at: s.expires_at,
+    refs: s.refs,
+  };
+}
+
+const TIME_LABELS: readonly string[] = ["expired", "revoked"];
+
+/** Recomputes the "expired" and "revoked" labels as of `at`. Revoked and expired responses stay visible. */
+export function labelResponses(responses: ResponseRecord[], at: string): ResponseRecord[] {
+  const { status } = resolveAttestations(responses.map(responseAttestation), at);
+  return responses.map((r) => {
+    const kept = r.assurance.filter((label) => !TIME_LABELS.includes(label));
+    const added: ResponseRecord["assurance"] = [];
+    if (status[r.statement_digest].time === "expired") added.push("expired");
+    if (status[r.statement_digest].revoked_by !== null) added.push("revoked");
+    const assurance = [...kept, ...added];
+    return assurance.length === r.assurance.length && assurance.every((label, i) => label === r.assurance[i]) ? r : { ...r, assurance };
+  });
 }
 
 const STATUS_BY_CLAIM: Record<string, string> = {
@@ -160,6 +187,7 @@ export function buildReceiptPayload(input: ReceiptInput): ReceiptPayload {
       expected_delivery: d.expected_delivery,
       retrospective: d.retrospective,
       downstream_visibility: d.downstream_visibility,
+      ...(d.execution ? { execution: d.execution } : {}),
     },
     provider: {
       provider_id: input.provider?.provider_id ?? null,
@@ -270,7 +298,7 @@ export function buildClosurePayload(input: ClosureInput): ClosurePayload {
     rollup: rollupFor(input.task, input.delegations, input.events, input.allocations),
     open_exceptions: input.open_exceptions,
     receipts: input.receipts,
-    responses: input.responses,
+    responses: labelResponses(input.responses, input.generated_at),
     key_bindings: input.key_bindings,
     lineage: {
       complete: input.capture_gaps.length === 0,

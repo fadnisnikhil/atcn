@@ -77,20 +77,23 @@ describe("local runner", () => {
     expect(result.totals.USD.net_cost).toBe(10_000);
   });
 
-  it("runs a subledger-only job with no obligations", () => {
+  it("runs a subledger-only job with no obligations, recording the run a delegation names", () => {
+    const llmRun = { execution_id: "req_123", agent: { agent_id: "model-api", agent_version: "2026-09", model: { provider: "example", name: "large", version: "2026-09" } } };
     const dir = tempDir();
     const jobPath = join(dir, "job.json");
     writeFileSync(
       jobPath,
       JSON.stringify({
         task: { external_ref: "research-1", currency: "USD" },
-        delegations: [{ external_ref: "llm-call", provider_name_stated: "Model API", claims: [{ type: "completion" }] }],
+        delegations: [{ external_ref: "llm-call", provider_name_stated: "Model API", execution: llmRun, claims: [{ type: "completion" }] }],
         financial_events: [{ type: "charge", source: "model-billing", source_event_id: "inv-7", amount_minor: 1_150, match: { delegation_external_ref: "llm-call" } }],
       }),
     );
     const result = run(jobPath);
     expect(result.valid).toBe(true);
     expect(result.totals.USD).toMatchObject({ net_cost: 1_150, unresolved: 1_150 });
+    expect(result.closure.payload.schema_version).toBe("1.4");
+    expect(result.closure.payload.delegations[0].execution).toEqual(llmRun);
   });
 
   it("explains job file mistakes by path", () => {

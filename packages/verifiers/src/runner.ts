@@ -1,6 +1,6 @@
-import { digestOf, newId, sha256Digest, type EvidenceEnvelope, type PolicyCheck, type VerifierResult } from "@atcn/schema";
+import { digestOf, newId, sha256Digest, type DeclaredExecution, type EvidenceEnvelope, type PolicyCheck, type SkillRef, type VerifierResult } from "@atcn/schema";
 import { eslintLintVerifier } from "./eslint.js";
-import { externalAttestationVerifier } from "./externalAttestation.js";
+import { externalAttestationVerifier, externalAttestationVerifierV1_1 } from "./externalAttestation.js";
 import { junitTestsVerifier } from "./junit.js";
 import { patchDigestVerifier } from "./patchDigest.js";
 import type { KeyLookupResult, VerifierPlugin } from "./types.js";
@@ -10,6 +10,7 @@ export const BUILT_IN_VERIFIERS: VerifierPlugin[] = [
   eslintLintVerifier,
   patchDigestVerifier,
   externalAttestationVerifier,
+  externalAttestationVerifierV1_1,
 ];
 
 export type FetchResult = { ok: true; content: Uint8Array } | { ok: false; error: string };
@@ -23,6 +24,10 @@ export interface RunCheckInput {
   requireDigestMatch: boolean;
   allowedVerifierIds: string[];
   resolveKey: (keyId: string, keyVersion: number) => KeyLookupResult | null;
+  /** Runs declared in signed obligation.started events (see declaredExecutions in @atcn/core). */
+  executions?: DeclaredExecution[];
+  termsSkill?: SkillRef | null;
+  obligationEvidenceDigests?: string[];
   registry?: VerifierPlugin[];
   now?: Date;
 }
@@ -78,6 +83,10 @@ export function runCheck(input: RunCheckInput): VerifierResult {
       content: input.fetchResult.content,
       allowedVerifierIds: input.allowedVerifierIds,
       resolveKey: input.resolveKey,
+      executions: input.executions,
+      termsSkill: input.termsSkill,
+      obligationEvidenceDigests: input.obligationEvidenceDigests,
+      evaluatedAt: base.executed_at,
     });
     return result(outcome.status, outcome.details, outcome.kind, outcome.model);
   } catch (error) {

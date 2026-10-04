@@ -97,6 +97,7 @@ Off-network work. The fields are the same as the hosted API's delegation request
 | `currency` | Defaults to the task's currency |
 | `shared_description`, `scope_ref`, `terms_digest`, `expected_delivery` | Description and references |
 | `downstream_visibility` | `unknown` (default), `disclosed` or `none`: whether the provider disclosed its own subcontractors |
+| `execution` | The run that did the work: `execution_id`, `agent` (`agent_id`, `agent_version`, optional `card_digest`, `model`, `config_digest`), and optional `protocol` and `skill`. It appears on the receipt and closure; a provider response can cite it |
 | `claims` | Delivery statements, in order. See below. |
 
 Each entry in `claims` has these fields:

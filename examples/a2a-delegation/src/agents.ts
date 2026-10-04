@@ -2,10 +2,20 @@ import { randomUUID } from "node:crypto";
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
-import { A2A_PROTOCOL_VERSION, AGENT_CARD_PATH, StreamResponse, TaskState, type AgentCard, type AgentExtension, type Artifact, type Part } from "@a2a-js/sdk";
+import {
+  A2A_PROTOCOL_VERSION,
+  AGENT_CARD_PATH,
+  AgentCard as AgentCardJson,
+  StreamResponse,
+  TaskState,
+  type AgentCard,
+  type AgentExtension,
+  type Artifact,
+  type Part,
+} from "@a2a-js/sdk";
 import { AgentEvent, DefaultRequestHandler, InMemoryTaskStore, type AgentExecutionEvent, type AgentExecutor, type ExecutionEventBus, type RequestContext } from "@a2a-js/sdk/server";
 import { agentCardHandler, jsonRpcHandler, UserBuilder } from "@a2a-js/sdk/server/express";
-import { A2AObligationBridge, localObligationClient, obligationIdFromMetadata, type A2AStreamResponse } from "@atcn/adapter-a2a";
+import { A2AObligationBridge, localObligationClient, obligationIdFromMetadata, skillIdFromMetadata, type A2AAgentCard, type A2AStreamResponse } from "@atcn/adapter-a2a";
 import type { LocalNetwork } from "@atcn/local-runner";
 import { acceptanceData, type EventSigner } from "@atcn/sdk";
 import express from "express";
@@ -88,6 +98,7 @@ class CodeFixExecutor implements AgentExecutor {
   constructor(
     private readonly network: LocalNetwork,
     private readonly signer: EventSigner,
+    private readonly agentCard: AgentCard,
   ) {}
 
   cancelTask = async (): Promise<void> => {};
@@ -102,7 +113,8 @@ class CodeFixExecutor implements AgentExecutor {
     const { terms } = this.network.obligation(obligationId);
     this.network.acceptObligation(this.signer.sign("obligation.accepted", obligationId, acceptanceData(terms, this.signer.actorId)));
 
-    const bridge = new A2AObligationBridge({ client: localObligationClient(this.network), worker: this.signer, obligationId });
+    const execution = { agentCard: AgentCardJson.toJSON(this.agentCard) as A2AAgentCard, skillId: skillIdFromMetadata(context.userMessage.metadata) ?? undefined };
+    const bridge = new A2AObligationBridge({ client: localObligationClient(this.network), worker: this.signer, obligationId, execution });
     const emit = async (event: AgentExecutionEvent) => {
       eventBus.publish(event);
       await bridge.handle(StreamResponse.toJSON(toStreamResponse(event)) as A2AStreamResponse);
@@ -161,7 +173,7 @@ class SearchExecutor implements AgentExecutor {
 /** Serves one agent over A2A JSON-RPC on a free localhost port. Routes added by `extraRoutes` sit beside it. */
 async function serve(
   card: { name: string; description: string; skill: string; extensions: AgentExtension[] },
-  executor: AgentExecutor,
+  executorFor: (agentCard: AgentCard) => AgentExecutor,
   extraRoutes: (app: express.Express) => void = () => {},
 ): Promise<RunningAgent> {
   const app = express();
@@ -184,7 +196,7 @@ async function serve(
     documentationUrl: "",
     signatures: [],
   };
-  const requestHandler = new DefaultRequestHandler(agentCard, new InMemoryTaskStore(), executor);
+  const requestHandler = new DefaultRequestHandler(agentCard, new InMemoryTaskStore(), executorFor(agentCard));
   extraRoutes(app);
   app.use(`/${AGENT_CARD_PATH}`, agentCardHandler({ agentCardProvider: requestHandler }));
   app.use(jsonRpcHandler({ requestHandler, userBuilder: UserBuilder.noAuthentication }));
@@ -210,7 +222,7 @@ export function startCodeFixAgent(network: LocalNetwork): Promise<RunningAgent> 
       skill: "code-fix",
       extensions: [{ uri: ATCN_EXTENSION_URI, description: "Takes paid work as ATCN obligations", required: false, params: { agent_id: signer.actorId } }],
     },
-    new CodeFixExecutor(network, signer),
+    (agentCard) => new CodeFixExecutor(network, signer, agentCard),
   );
 }
 
@@ -224,7 +236,7 @@ export function startSearchAgent(): Promise<RunningAgent> {
   ];
   return serve(
     { name: "Gamma Search API", description: "Metered web search, USD 12.00 per search, billed monthly by A2A task id.", skill: "search", extensions: [] },
-    new SearchExecutor(charges),
+    () => new SearchExecutor(charges),
     (app) => app.get("/billing/charges", (_req, res) => void res.json({ items: charges })),
   );
 }

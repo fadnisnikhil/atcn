@@ -61,6 +61,14 @@ export interface A2ATaskArtifactUpdateEvent {
   metadata?: Record<string, unknown>;
 }
 
+/** The agent card fields the bridge reads, in A2A wire JSON (with @a2a-js/sdk, `AgentCard.toJSON(card)`). */
+export interface A2AAgentCard {
+  name: string;
+  version: string;
+  skills?: { id: string }[];
+  [field: string]: unknown;
+}
+
 /**
  * Stream responses are discriminated by member name. With @a2a-js/sdk, `StreamResponse.toJSON(event)` produces
  * this shape from the SDK's objects.

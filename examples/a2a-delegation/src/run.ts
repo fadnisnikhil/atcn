@@ -6,13 +6,15 @@ import { ClientFactory, type Client } from "@a2a-js/sdk/client";
 import { obligationTaskMetadata, type A2AStreamResponse } from "@atcn/adapter-a2a";
 import { REFERENCE_POLICIES, verifyClosurePackage, type PackageVerificationReport } from "@atcn/core";
 import { LocalNetwork, LocalSubledger, loadOrCreateServiceKey, servicePublicKey, type LocalException } from "@atcn/local-runner";
-import type { ClosurePackage, PublicKeyRecord } from "@atcn/schema";
+import type { ClosurePackage, ExecutionDescriptor, PublicKeyRecord, SkillRef } from "@atcn/schema";
 import { buildTerms, termsData } from "@atcn/sdk";
 import { verifySubledgerDocument, type SignedClosure, type SubledgerVerificationReport, type Totals } from "@atcn/subledger";
 import { atcnAgentId, startCodeFixAgent, startSearchAgent, type BillingCharge } from "./agents.js";
 
 export interface A2ADelegationResult {
   task_id: string;
+  /** The run Beta's agent declared in obligation.started. */
+  execution: ExecutionDescriptor | null;
   closure: SignedClosure;
   packages: ClosurePackage[];
   trusted_keys: PublicKeyRecord[];
@@ -30,6 +32,8 @@ export interface RunOptions {
 }
 
 const CODE_FIX_PRICE_MINOR = 10_000;
+/** The AgentSkill id on Beta's agent card. Agreed in the terms, so the run Beta declares must perform it. */
+const CODE_FIX_SKILL: SkillRef = { namespace: "a2a", skill_id: "code-fix" };
 
 function userMessage(text: string, metadata: Record<string, unknown> = {}): SendMessageRequest {
   return {
@@ -101,11 +105,16 @@ export async function runA2ADelegation(options: RunOptions): Promise<A2ADelegati
       maxAmountMinor: CODE_FIX_PRICE_MINOR,
       deliverables: [{ deliverable_id: "work", description: "Fix the add() bug", amount_minor: CODE_FIX_PRICE_MINOR, required_checks: ["unit_tests", "lint", "patch"] }],
       policy,
+      skill: CODE_FIX_SKILL,
     });
     const obligationId = terms.obligation_id;
     network.offerObligation(buyer.sign("obligation.offered", obligationId, termsData(terms)), { task_id: task.task_id });
-    log(`obligation ${obligationId}: offered USD 100.00 to ${codeFixAgent.name}`);
-    await streamTask(codeFix, userMessage("Fix the add() bug in src/math.ts", obligationTaskMetadata(obligationId)), log, codeFixAgent.name);
+    log(`obligation ${obligationId}: offered USD 100.00 to ${codeFixAgent.name} for skill a2a/${CODE_FIX_SKILL.skill_id}`);
+    await streamTask(codeFix, userMessage("Fix the add() bug in src/math.ts", obligationTaskMetadata(obligationId, { skillId: CODE_FIX_SKILL.skill_id })), log, codeFixAgent.name);
+
+    const started = network.events.find((e) => e.payload.obligation_id === obligationId && e.payload.event_type === "obligation.started");
+    const execution = (started?.payload.data.execution as ExecutionDescriptor | undefined) ?? null;
+    if (execution) log(`  run ${execution.execution_id}: agent version ${execution.agent.agent_version}, skill ${execution.skill?.namespace}/${execution.skill?.skill_id}`);
 
     const { decision } = network.evaluate(obligationId);
     if (decision.outcome !== "insufficient_evidence") network.finalize(decision.decision_id);
@@ -156,6 +165,7 @@ export async function runA2ADelegation(options: RunOptions): Promise<A2ADelegati
 
     return {
       task_id: task.task_id,
+      execution,
       closure,
       packages,
       trusted_keys: trustedKeys,

@@ -1,16 +1,19 @@
+import { AttestationRefSchema, ExecutionBindingSchema, ExecutionDescriptorSchema } from "@atcn/schema";
 import { z } from "zod";
 import { ASSURANCE_LABELS, ATTESTABLE_FIELDS, CLAIM_ASSERTERS, Currency, DELIVERY_EVENT_TYPES, EvidenceRefSchema, FINANCIAL_EVENT_TYPES, FxSchema, Minor, NORMALIZED_STATUSES, PAYERS, RESPONSE_TYPES } from "./types.js";
 
 /**
  * Signed documents of the Agent Work Subledger (PRD v1.2 §6, §16).
  * Schema 1.3 adds closure `obligation_links`, the clearing-network claim asserters, and the `network_recorded` assurance label;
- * 1.2 documents must use neither (see packages/schema/COMPATIBILITY.md).
+ * 1.2 documents must use neither. Schema 1.4 adds delegation `execution`, the response statement fields `execution`,
+ * `issued_at`, `expires_at` and `refs`, and the `expired` and `revoked` labels; 1.2 and 1.3 documents must use none
+ * of them (see packages/schema/COMPATIBILITY.md).
  */
 
-export const SUBLEDGER_SCHEMA_VERSION = "1.3" as const;
-export const SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS = ["1.2", "1.3"] as const;
+export const SUBLEDGER_SCHEMA_VERSION = "1.4" as const;
+export const SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS = ["1.2", "1.3", "1.4"] as const;
 /** Must equal this package's version in package.json (checked by a test). */
-export const SUBLEDGER_VERIFIER_VERSION = "1.3.2" as const;
+export const SUBLEDGER_VERIFIER_VERSION = "1.4.0" as const;
 export const RECEIPT_DOCUMENT_TYPE = "atcn.subledger.receipt" as const;
 export const CLOSURE_DOCUMENT_TYPE = "atcn.subledger.closure" as const;
 export const RESPONSE_STATEMENT_TYPE = "atcn.subledger.receipt_response" as const;
@@ -140,6 +143,13 @@ export const ResponseStatementSchema = z.object({
   note: z.string().max(2000).nullable(),
   evidence: z.array(EvidenceRefSchema).max(20),
   corrections: z.array(CorrectionSchema).max(20),
+  /** Schema 1.4: the run the statement is about; must match the delegation's recorded execution. */
+  execution: ExecutionBindingSchema.optional(),
+  /** Schema 1.4: when the provider signed. Required with expires_at or refs. */
+  issued_at: Iso.optional(),
+  expires_at: Iso.optional(),
+  /** Schema 1.4: earlier statements this one revokes (same provider only) or disputes, by statement digest. */
+  refs: z.array(AttestationRefSchema).max(20).optional(),
 });
 export type ResponseStatement = z.infer<typeof ResponseStatementSchema>;
 
@@ -210,6 +220,8 @@ export const ReceiptPayloadSchema = z.object({
     expected_delivery: Iso.nullable(),
     retrospective: z.boolean(),
     downstream_visibility: z.enum(["unknown", "disclosed", "none"]),
+    /** Schema 1.4, present only when recorded: the run a provider statement can cite. */
+    execution: ExecutionDescriptorSchema.optional(),
   }),
   provider: z.object({
     provider_id: z.string().nullable(),
@@ -255,6 +267,8 @@ export const ClosureDelegationSchema = z.object({
   delivery_status: z.string(),
   retrospective: z.boolean(),
   created_at: Iso,
+  /** Schema 1.4, present only when recorded, so older closures keep their bytes. */
+  execution: ExecutionDescriptorSchema.optional(),
 });
 export type ClosureDelegation = z.infer<typeof ClosureDelegationSchema>;
 

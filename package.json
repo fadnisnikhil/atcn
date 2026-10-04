@@ -28,7 +28,7 @@
     "set-version": "node scripts/release.mjs set",
     "release:plan": "node scripts/release.mjs plan",
     "gen:schemas": "tsx --conditions=atcn-source packages/schema/scripts/generate-json-schemas.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-json-schemas.ts",
-    "gen:vectors": "tsx --conditions=atcn-source packages/schema/scripts/generate-test-vectors.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-test-vectors.ts"
+    "gen:vectors": "tsx --conditions=atcn-source packages/schema/scripts/generate-test-vectors.ts && tsx --conditions=atcn-source packages/subledger/scripts/generate-test-vectors.ts && tsx --conditions=atcn-source packages/verifiers/scripts/generate-attestation-fixtures.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

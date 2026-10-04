@@ -12,8 +12,8 @@ No account, API key, database or payment credentials are needed.
 ## What happens
 
 1. **Acme's orchestrator opens a task** with a USD 150 budget.
-2. **It pays Beta's code-fix agent USD 100.** Beta's agent card advertises its ATCN agent id. The orchestrator offers it an obligation, then sends the A2A task with `obligationTaskMetadata(obligationId)` on the message. Beta's agent accepts the terms with its own key and runs [`@atcn/adapter-a2a`](../../packages/adapter-a2a) on its own task stream:
-   - `TASK_STATE_WORKING` becomes `obligation.started`;
+2. **It pays Beta's code-fix agent USD 100.** Beta's agent card advertises its ATCN agent id. The orchestrator offers it an obligation for the card's `code-fix` skill (terms `skill: a2a/code-fix`), then sends the A2A task with `obligationTaskMetadata(obligationId, { skillId: "code-fix" })` on the message. Beta's agent accepts the terms with its own key and runs [`@atcn/adapter-a2a`](../../packages/adapter-a2a) on its own task stream:
+   - `TASK_STATE_WORKING` becomes `obligation.started`, declaring the run: the A2A task id, the agent card's version and digest, and the skill. An attestation can cite exactly this run;
    - its test, lint and patch artifacts become `evidence.submitted`;
    - `TASK_STATE_COMPLETED` becomes `completion.proposed`.
 

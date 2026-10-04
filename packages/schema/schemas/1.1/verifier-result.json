@@ -1,0 +1,156 @@
+{
+  "$id": "https://schemas.atcn.dev/1.1/verifier-result.json",
+  "title": "verifier-result",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "result_id": {
+      "type": "string"
+    },
+    "obligation_id": {
+      "type": "string",
+      "pattern": "^obl_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "check_id": {
+      "type": "string"
+    },
+    "deliverable_id": {
+      "type": "string"
+    },
+    "verifier_name": {
+      "type": "string"
+    },
+    "verifier_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "config_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "deterministic",
+        "probabilistic"
+      ]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^evd_[0-9A-HJKMNP-TV-Z]{26}$"
+      }
+    },
+    "evidence_digests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "invalid_evidence",
+        "missing_evidence",
+        "unavailable"
+      ]
+    },
+    "details": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema0"
+      }
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "confidence_bps": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "name",
+            "version",
+            "confidence_bps"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    }
+  },
+  "required": [
+    "result_id",
+    "obligation_id",
+    "check_id",
+    "deliverable_id",
+    "verifier_name",
+    "verifier_version",
+    "config_digest",
+    "kind",
+    "evidence_ids",
+    "evidence_digests",
+    "status",
+    "details",
+    "model",
+    "executed_at"
+  ],
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      ]
+    }
+  }
+}

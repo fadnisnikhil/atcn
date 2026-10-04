@@ -6,6 +6,7 @@ import {
   type EvidenceEnvelope,
   type ObligationTerms,
   type PolicyTemplate,
+  type SkillRef,
 } from "@atcn/schema";
 
 export interface TermsInput {
@@ -27,6 +28,8 @@ export interface TermsInput {
   subdelegation?: { maxDepth: number; maxTotalMinor: number; allowedPolicyIds?: string[] } | null;
   disputeReviewerId?: string | null;
   verifierAgentIds?: string[];
+  /** The skill the counterparty performs (for A2A, the AgentSkill id). Produces schema_version 1.1 terms. */
+  skill?: SkillRef;
 }
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -35,7 +38,7 @@ const DAY_MS = 24 * 3600 * 1000;
 export function buildTerms(input: TermsInput): ObligationTerms {
   const now = Date.now();
   return {
-    schema_version: "1.0",
+    schema_version: input.skill ? "1.1" : "1.0",
     obligation_id: newId("obligation"),
     terms_version: 1,
     parent_obligation_id: input.parentObligationId ?? null,
@@ -58,6 +61,7 @@ export function buildTerms(input: TermsInput): ObligationTerms {
     dispute_reviewer_id: input.disputeReviewerId ?? null,
     verifier_agent_ids: input.verifierAgentIds ?? [],
     issued_at: new Date(now).toISOString(),
+    ...(input.skill ? { skill: input.skill } : {}),
   };
 }
 

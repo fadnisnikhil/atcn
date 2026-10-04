@@ -1,3 +1,4 @@
+export * from "./attestation.js";
 export * from "./canonical.js";
 export * from "./crypto.js";
 export * from "./encoding.js";

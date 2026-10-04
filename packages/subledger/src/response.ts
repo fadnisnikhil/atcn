@@ -1,4 +1,4 @@
-import { canonicalize, digestOf, signBytes, utf8Encode, verifyBytes } from "@atcn/schema";
+import { canonicalize, digestOf, signBytes, utf8Encode, verifyBytes, type AttestationRef, type ExecutionBinding } from "@atcn/schema";
 import { RESPONSE_STATEMENT_TYPE, type Correction, type ResponseStatement } from "./documents.js";
 import type { AttestableField, EvidenceRef, ResponseType } from "./types.js";
 
@@ -9,6 +9,11 @@ export interface StatementInput {
   note?: string | null;
   evidence?: EvidenceRef[];
   corrections?: Correction[];
+  /** Schema 1.4 fields. Each is left out of the statement when not given, so older statements keep their bytes. */
+  execution?: ExecutionBinding;
+  issued_at?: string;
+  expires_at?: string;
+  refs?: AttestationRef[];
 }
 
 /** Builds the statement a provider responds with. Field order is irrelevant: the signature covers canonical JSON. */
@@ -24,6 +29,10 @@ export function buildResponseStatement(input: StatementInput): ResponseStatement
     note: input.note ?? null,
     evidence: input.evidence ?? [],
     corrections: input.corrections ?? [],
+    ...(input.execution !== undefined ? { execution: input.execution } : {}),
+    ...(input.issued_at !== undefined ? { issued_at: input.issued_at } : {}),
+    ...(input.expires_at !== undefined ? { expires_at: input.expires_at } : {}),
+    ...(input.refs !== undefined ? { refs: input.refs } : {}),
   };
 }
 

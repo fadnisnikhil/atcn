@@ -16,6 +16,7 @@ Options:
 - **`--previous`:** checks the chain link to the previous revision.
 - **`--operator-keys` and `--require-operator-signature`:** check operator countersignatures.
 - **`--obligation-package`:** cross-checks a closure's linked obligations against their closure packages. You can repeat it.
+- **`--at <ISO-8601 time>`:** checks a provider receipt's `expires_at` against that time instead of now, for example the time you received it.
 - **`--json`:** prints the report as JSON.
 
 Exit codes:

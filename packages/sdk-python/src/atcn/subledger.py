@@ -12,7 +12,7 @@ from typing import Any
 
 from .canonical import canonicalize
 from .client import AtcnApiError, AtcnClient
-from .crypto import sha256_digest, sign_bytes, verify_bytes
+from .crypto import digest_of, sha256_digest, sign_bytes, verify_bytes
 
 Json = dict[str, Any]
 
@@ -37,9 +37,23 @@ def _path(ref: str) -> str:
 # ---------- Statements and signatures ----------
 
 
-def build_response_statement(receipt: Json, response_type: str, fields: list[str] | None = None, note: str | None = None, evidence: list[Json] | None = None, corrections: list[Json] | None = None) -> Json:
-    """The statement a provider responds with. receipt needs receipt_id, digest, revision, and issuer_operator_id."""
-    return {
+def build_response_statement(
+    receipt: Json,
+    response_type: str,
+    fields: list[str] | None = None,
+    note: str | None = None,
+    evidence: list[Json] | None = None,
+    corrections: list[Json] | None = None,
+    execution: Json | None = None,
+    issued_at: str | None = None,
+    expires_at: str | None = None,
+    refs: list[Json] | None = None,
+) -> Json:
+    """The statement a provider responds with. receipt needs receipt_id, digest, revision, and issuer_operator_id.
+
+    execution, issued_at, expires_at, and refs (schema 1.4) are left out when None, so older statements keep their bytes.
+    """
+    statement: Json = {
         "document_type": RESPONSE_STATEMENT_TYPE,
         "receipt_id": receipt["receipt_id"],
         "receipt_digest": receipt["digest"],
@@ -51,6 +65,14 @@ def build_response_statement(receipt: Json, response_type: str, fields: list[str
         "evidence": evidence or [],
         "corrections": corrections or [],
     }
+    optional = {"execution": execution, "issued_at": issued_at, "expires_at": expires_at, "refs": refs}
+    statement.update({key: value for key, value in optional.items() if value is not None})
+    return statement
+
+
+def execution_binding(descriptor: Json) -> Json:
+    """Names one run: its execution_id and the digest of the full run descriptor recorded on the delegation."""
+    return {"execution_id": descriptor["execution_id"], "execution_digest": digest_of(descriptor)}
 
 
 def sign_statement(statement: Json, private_key: str) -> str:
@@ -244,11 +266,26 @@ class ReceiptLinkClient:
         corrections: list[Json] | None = None,
         signing: Json | None = None,
         idempotency_key: str | None = None,
+        execution: Json | None = None,
+        issued_at: str | None = None,
+        expires_at: str | None = None,
+        refs: list[Json] | None = None,
     ) -> Json:
         """receipt needs receipt_id, digest, and revision. signing needs binding_id, key_id, private_key, issuer_operator_id."""
         provider_signature = None
         if signing:
-            statement = build_response_statement({**receipt, "issuer_operator_id": signing["issuer_operator_id"]}, response_type, fields, note, evidence, corrections)
+            statement = build_response_statement(
+                {**receipt, "issuer_operator_id": signing["issuer_operator_id"]},
+                response_type,
+                fields,
+                note,
+                evidence,
+                corrections,
+                execution=execution,
+                issued_at=issued_at,
+                expires_at=expires_at,
+                refs=refs,
+            )
             provider_signature = {"binding_id": signing["binding_id"], "key_id": signing["key_id"], "value": sign_statement(statement, signing["private_key"])}
         body = {
             "receipt_digest": receipt["digest"],
@@ -260,6 +297,8 @@ class ReceiptLinkClient:
             "corrections": corrections or [],
             "provider_signature": provider_signature,
         }
+        optional = {"execution": execution, "issued_at": issued_at, "expires_at": expires_at, "refs": refs}
+        body.update({key: value for key, value in optional.items() if value is not None})
         return self.http.request("POST", f"/v1/receipts/{receipt['receipt_id']}/responses", body, idempotency_key)
 
 

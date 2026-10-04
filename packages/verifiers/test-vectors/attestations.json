@@ -1,0 +1,1567 @@
+{
+  "description": "Adversarial external attestations. plugin_cases run external_attestation at verifier_version against context; resolution_cases apply expiry and revocation, where an attestation's signer is its verifier_id and its digest is the digest of its payload. declared_executions are the run descriptors the counterparty declared; each one's binding is executionBinding(descriptor).",
+  "keys": [
+    {
+      "key_id": "key_01J00000000000000000000001",
+      "key_version": 1,
+      "actor_id": "agt_01J00000000000000000000001",
+      "public_key": "ebVWLo_mVPlAeLES6KmLp5AfhTrmlb7X4OORC60ElmQ",
+      "revoked_at": null
+    },
+    {
+      "key_id": "key_01J00000000000000000000001",
+      "key_version": 2,
+      "actor_id": "agt_01J00000000000000000000001",
+      "public_key": "TjDlN9oNdK3AZCssMw2ncymUxGBYXjmnCh3VEaYIxHs",
+      "revoked_at": "2026-10-05T10:00:00.000Z"
+    },
+    {
+      "key_id": "key_01J00000000000000000000002",
+      "key_version": 1,
+      "actor_id": "agt_01J00000000000000000000002",
+      "public_key": "2inpWwLgD_oVZFd1-x0roiKhlDOV7qBrlOLAV7e-adA",
+      "revoked_at": null
+    }
+  ],
+  "execution_bindings": [
+    {
+      "descriptor": {
+        "execution_id": "run_fx_1",
+        "protocol": {
+          "name": "a2a",
+          "task_id": "task-fx-1",
+          "context_id": "ctx-fx-1"
+        },
+        "agent": {
+          "agent_id": "agt_01J00000000000000000000003",
+          "agent_version": "1.0.0",
+          "model": {
+            "provider": "example",
+            "name": "coder",
+            "version": "2026-09"
+          }
+        },
+        "skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        }
+      },
+      "binding": {
+        "execution_id": "run_fx_1",
+        "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+      }
+    },
+    {
+      "descriptor": {
+        "execution_id": "run_fx_2",
+        "protocol": {
+          "name": "a2a",
+          "task_id": "task-fx-2"
+        },
+        "agent": {
+          "agent_id": "agt_01J00000000000000000000003",
+          "agent_version": "1.0.0"
+        },
+        "skill": {
+          "namespace": "a2a",
+          "skill_id": "translate"
+        }
+      },
+      "binding": {
+        "execution_id": "run_fx_2",
+        "execution_digest": "sha256:bb182e7b27a9d464574e15cbbe3dbb261106bf85455443e79557c9c5f4f9c254"
+      }
+    },
+    {
+      "descriptor": {
+        "execution_id": "run_fx_9",
+        "agent": {
+          "agent_id": "agt_01J00000000000000000000003",
+          "agent_version": "9.9.9"
+        },
+        "skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        }
+      },
+      "binding": {
+        "execution_id": "run_fx_9",
+        "execution_digest": "sha256:814f6b0edcb01f12f2a0169bf0aacfdf815899da5a2daa97fc2f3b28b7f2f9e6"
+      }
+    }
+  ],
+  "plugin_cases": [
+    {
+      "name": "valid",
+      "fixture": null,
+      "description": "Control: bound to a declared run of the agreed skill, citing evidence on the obligation.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "pass",
+        "code": null
+      }
+    },
+    {
+      "name": "execution_not_declared",
+      "fixture": 1,
+      "description": "Cites a run no obligation.started event declared.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_9",
+            "execution_digest": "sha256:814f6b0edcb01f12f2a0169bf0aacfdf815899da5a2daa97fc2f3b28b7f2f9e6"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "x7repinFpdEN_LZv4ur-2tgKHkAZNAMW_iVFwzBOQtOu-0zvQI4BbIC86Q7g78fe1HfLhnl2Lo03juw-INfKDA"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "execution_not_declared"
+      }
+    },
+    {
+      "name": "execution_digest_altered",
+      "fixture": 1,
+      "description": "Cites a declared execution_id with the digest of a different descriptor.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:814f6b0edcb01f12f2a0169bf0aacfdf815899da5a2daa97fc2f3b28b7f2f9e6"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "0Xg2qfEBJFdA-8xVHpBLEGjqulA7zMNnUy_DSbDAl1vuj-Es7BDCfylcOrosmUCI0k7JgbfJK3YMtDfx2o9PBw"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "execution_not_declared"
+      }
+    },
+    {
+      "name": "skill_mismatch",
+      "fixture": 2,
+      "description": "Cites a declared run that performed a different skill from terms.skill.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_2",
+            "execution_digest": "sha256:bb182e7b27a9d464574e15cbbe3dbb261106bf85455443e79557c9c5f4f9c254"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "5H0POelRMM1y_viaKl7dtYmE6l56qXqP_peSYRiHU0KnEIPithMLuwnUfcg43zqjH3cWPCsn9nrZX6cZ4MYiCA"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "skill_mismatch"
+      }
+    },
+    {
+      "name": "execution_required",
+      "fixture": 2,
+      "description": "The terms name a skill, but the attestation cites no run.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "3sFZeH3R369V0XASYCej9rt4R2B-RZ4sreBwZHvNfURjNNESvkCE1fOKNnEIjs5ZYds3iWQD1VP6En69FarGAQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "execution_required"
+      }
+    },
+    {
+      "name": "expired",
+      "fixture": 4,
+      "description": "Expired before the evaluation time, so it does not count.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-04T00:00:00.000Z",
+          "expires_at": "2026-10-05T00:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "5QFmPxPwg-RzqE2ZALB4yWm8_ZIIviMBG7e7TkI_QSv6_YxEMuIKgORbtj6hvDZchGzOwy0KPS4I1g5Bc-ppBQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "expired"
+      }
+    },
+    {
+      "name": "not_yet_valid",
+      "fixture": 5,
+      "description": "issued_at is more than 5 minutes after the evaluation time.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T12:06:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "W7j_FluzHYuNC8_IG9uzrnIXb4I7ph73cfn6jEFaEMlP_ZDToE0_RPVYMblhpfAdM-5iiDNLFCWs3HMU5l_jDA"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "not_yet_valid"
+      }
+    },
+    {
+      "name": "within_clock_skew",
+      "fixture": 5,
+      "description": "issued_at is 4 minutes after the evaluation time, inside the allowed skew.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T12:04:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "o2kONCiQknWcPiBz57_JtWZnkxBLnw7AAvRKbGxBEP5ycZvC6WhQ2Ucvhtw_1X48B0ZIg2PzjbaUZDLAThuXDQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "pass",
+        "code": null
+      }
+    },
+    {
+      "name": "subject_mismatch",
+      "fixture": 15,
+      "description": "An attestation for obligation A submitted on obligation B.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000002",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "ZiXW0NVjvG2i_Tdk7KfRoSzprcgBflVeZBQUT47E_pSmIMu28joH1EMtBbOYtaNvD4NMlncrKWaabIsNT1-eBg"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "subject_mismatch"
+      }
+    },
+    {
+      "name": "expiry_stripped",
+      "fixture": 16,
+      "description": "expires_at was deleted after signing.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "6HoSzsYeP9NbbKsbROHnLprYrP87KUibpClsc7X80wdcYjl2hh-2YXFPv_Q4gB4_AUaD3Web-_xO5nswmnMGCQ"
+        }
+      },
+      "expected": {
+        "signature_valid": false,
+        "status": "invalid_evidence",
+        "code": "signature_invalid"
+      }
+    },
+    {
+      "name": "key_revoked",
+      "fixture": 17,
+      "description": "Signed with a key revoked before the attestation's issued_at.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 2,
+          "algorithm": "Ed25519",
+          "value": "VRHB5BTChErjS4BgkE31wIZFjmMjZrN89iUHx56eSSQMinvL1lqWTylqHr2E60k3vYPo2J6iZiMZvXno1FplDA"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "key_revoked"
+      }
+    },
+    {
+      "name": "evidence_not_on_obligation",
+      "fixture": null,
+      "description": "Cites an evidence digest never submitted on the obligation.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct",
+          "execution": {
+            "execution_id": "run_fx_1",
+            "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+          },
+          "evidence_digests": [
+            "sha256:d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa"
+          ],
+          "issued_at": "2026-10-05T11:00:00.000Z"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "q2v7vih9I5_4VSBmynkBOh6KXmgORkiyqW_hgw1Rm7sFaIeOJ0Q-E4BwD9EHxhlTPzfvA9mTF2PO6brzCvOiDQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "invalid_evidence",
+        "code": "evidence_not_on_obligation"
+      }
+    },
+    {
+      "name": "legacy_payload_1_1",
+      "fixture": 19,
+      "description": "A 1.0-shaped attestation, terms without a skill: still passes under 1.1.0.",
+      "verifier_version": "1.1.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": null,
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "cmX0IbunwhB6ni432zmj9KD7V8xEEZGp1W34KUQQRB-2C0EcnwnVjkFKGivHfLPVlcMdLKGqVcRWJd398e-LAQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "pass",
+        "code": null
+      }
+    },
+    {
+      "name": "legacy_payload_1_0",
+      "fixture": 19,
+      "description": "The same attestation under the unchanged 1.0.0 plugin.",
+      "verifier_version": "1.0.0",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "review",
+        "allowed_verifier_ids": [
+          "agt_01J00000000000000000000001",
+          "agt_01J00000000000000000000002"
+        ],
+        "terms_skill": null,
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestation": {
+        "payload": {
+          "obligation_id": "obl_01J00000000000000000000001",
+          "deliverable_id": "main",
+          "check_id": "review",
+          "verifier_id": "agt_01J00000000000000000000001",
+          "status": "pass",
+          "probabilistic": false,
+          "model": null,
+          "summary": "Fix is correct"
+        },
+        "signature": {
+          "key_id": "key_01J00000000000000000000001",
+          "key_version": 1,
+          "algorithm": "Ed25519",
+          "value": "cmX0IbunwhB6ni432zmj9KD7V8xEEZGp1W34KUQQRB-2C0EcnwnVjkFKGivHfLPVlcMdLKGqVcRWJd398e-LAQ"
+        }
+      },
+      "expected": {
+        "signature_valid": true,
+        "status": "pass",
+        "code": null
+      }
+    }
+  ],
+  "resolution_cases": [
+    {
+      "name": "revoked_by_own_signer",
+      "fixture": 6,
+      "description": "The reviewer revokes its own attestation: it stays visible, marked revoked, and does not count.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "fail",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:30:00.000Z",
+            "refs": [
+              {
+                "relation": "revokes",
+                "attestation_digest": "sha256:16c325600f585e4f52ac301f35a2b30af2be39127b190f7f2ee1020cf2cad225",
+                "reason": "judged the wrong patch"
+              }
+            ]
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "J1wulm1oJTGq_1mbiwV2A82x0BYIX7hV-2V6ua0m21247nv0yoq4Sr9BOUJ6ZS85DCF4XZ0mndCerAFQHUaCCA"
+          }
+        }
+      ],
+      "expected": {
+        "revoked": [
+          true,
+          false
+        ],
+        "problems": []
+      }
+    },
+    {
+      "name": "revoked_by_other_signer",
+      "fixture": 7,
+      "description": "The auditor tries to revoke the reviewer's attestation: refused, and the original still counts.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000002",
+            "status": "fail",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:30:00.000Z",
+            "refs": [
+              {
+                "relation": "revokes",
+                "attestation_digest": "sha256:16c325600f585e4f52ac301f35a2b30af2be39127b190f7f2ee1020cf2cad225",
+                "reason": "judged the wrong patch"
+              }
+            ]
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000002",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "TtVPJML0uHRVU4QgWFeiZ221sFZ751HOnQvMklnvTqb6oYt4VombV2YylZoJprNmxuDvgTsS2r0bnYpae8I0DA"
+          }
+        }
+      ],
+      "expected": {
+        "revoked": [
+          false,
+          false
+        ],
+        "problems": [
+          {
+            "attestation": 1,
+            "code": "revocation_not_by_signer",
+            "target": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "unknown_reference",
+      "fixture": 8,
+      "description": "A ref names an attestation that is not in the set: reported, and nothing else changes.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "refs": [
+              {
+                "relation": "disputes",
+                "attestation_digest": "sha256:9f40a20e35a1968470327618064430b08329d9c64474db2d6a7710d5d465bd71",
+                "reason": "see the auditor's report"
+              }
+            ]
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "UXBii1JDoXXlIRXyxJGUraDyIns4WXl17pSDTWzcD0OjP1_7S-RNSKZo03MalJo3aBy7KH8saQgBEjvhl8i1Dg"
+          }
+        }
+      ],
+      "expected": {
+        "revoked": [
+          false
+        ],
+        "problems": [
+          {
+            "attestation": 0,
+            "code": "unknown_reference",
+            "target": null
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "$id": "https://schemas.atcn.dev/1.1/execution-descriptor.json",
+  "title": "execution-descriptor",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "execution_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "protocol": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "const": "a2a"
+        },
+        "task_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "context_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "name",
+        "task_id"
+      ]
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "card_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "model": {
+          "type": "object",
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          "required": [
+            "provider",
+            "name",
+            "version"
+          ]
+        },
+        "config_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "agent_id",
+        "agent_version"
+      ]
+    },
+    "skill": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.-]+$"
+        },
+        "skill_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "agent_card_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "namespace",
+        "skill_id"
+      ]
+    }
+  },
+  "required": [
+    "execution_id",
+    "agent"
+  ]
+}

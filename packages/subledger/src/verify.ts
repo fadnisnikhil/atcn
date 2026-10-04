@@ -1,5 +1,5 @@
 import { verifyClosurePackage } from "@atcn/core";
-import { ClosurePackageSchema, digestOf, verifyPayload, type PublicKeyRecord } from "@atcn/schema";
+import { ClosurePackageSchema, digestOf, executionBinding, resolveAttestations, verifyPayload, type PublicKeyRecord } from "@atcn/schema";
 import { CLEARING_SOURCE, clearingFacts, settlementEvidence, undoneBatch } from "./bridge.js";
 import {
   CLOSURE_DOCUMENT_TYPE,
@@ -12,10 +12,11 @@ import {
   type ObligationLink,
   type OperatorKeyRecord,
   type OperatorSignature,
+  type ResponseRecord,
   type SignedClosure,
   type SignedReceipt,
 } from "./documents.js";
-import { receiptTotals, rollupFor } from "./projection.js";
+import { labelResponses, receiptTotals, responseAttestation, rollupFor } from "./projection.js";
 import { verifyCountersignature, verifyStatementSignature } from "./response.js";
 import { ATTESTABLE_FIELDS, type FinancialEventRecord } from "./types.js";
 
@@ -44,6 +45,8 @@ export interface SubledgerVerifyOptions {
   requireOperatorSignature?: boolean;
   /** Closure packages (GET /v1/exports/{obligation_id}) of the obligations backing linked delegations, to cross-check them. */
   obligationPackages?: unknown[];
+  /** Time to check a receipt's expires_at against (ISO 8601). Defaults to now. */
+  at?: string;
 }
 
 const SERVICE_ACTOR = "svc_atcn";
@@ -103,9 +106,10 @@ function unsupportedVersion(documentType: string, input: unknown): SubledgerVeri
   const version = (input as { payload?: { schema_version?: unknown } } | null)?.payload?.schema_version;
   const supported: readonly unknown[] = SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS;
   if (supported.includes(version)) return null;
+  const versions = [...SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS];
   const detail =
     `unsupported schema_version ${String(version)}: this verifier (@atcn/subledger ${SUBLEDGER_VERIFIER_VERSION}) supports ` +
-    `${SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS.join(" and ")}. Upgrade @atcn/verify-cli (or @atcn/subledger) to the minimum ` +
+    `${versions.slice(0, -1).join(", ")} and ${versions.at(-1)}. Upgrade @atcn/verify-cli (or @atcn/subledger) to the minimum ` +
     "version listed for this schema in packages/schema/COMPATIBILITY.md.";
   return { valid: false, document_type: documentType, unsupported_schema_version: String(version), checks: [check("schema_version", [detail])] };
 }
@@ -119,6 +123,22 @@ function versionFeatureProblems(version: string, signedBy: string, claims: { ass
   if (claims.some((c) => c.assurance.includes("network_recorded"))) problems.push("schema 1.2 does not allow assurance network_recorded");
   if (hasObligationLinks) problems.push("schema 1.2 does not allow obligation_links");
   if (signedBy !== SIGNED_BY_HOSTED_SERVICE) problems.push(`schema 1.2 does not allow signed_by ${signedBy}`);
+  return problems;
+}
+
+const SCHEMA_1_4_STATEMENT_FIELDS = ["execution", "issued_at", "expires_at", "refs"] as const;
+const SCHEMA_1_4_LABELS: readonly string[] = ["expired", "revoked"];
+
+/** A document that declares 1.2 or 1.3 must not carry 1.4 fields, which those verifiers would drop before checking signatures. */
+function schema14Problems(version: string, delegations: { delegation_id: string; execution?: unknown }[], responses: ResponseRecord[], claims: { assurance: string[] }[]): string[] {
+  if (version !== "1.2" && version !== "1.3") return [];
+  const problems = delegations.filter((d) => d.execution !== undefined).map((d) => `schema ${version} does not allow execution on delegation ${d.delegation_id}`);
+  for (const r of responses) {
+    for (const field of SCHEMA_1_4_STATEMENT_FIELDS) if (r.statement[field] !== undefined) problems.push(`schema ${version} does not allow statement ${field} (response ${r.response_id})`);
+  }
+  for (const item of [...responses, ...claims]) {
+    for (const label of item.assurance.filter((l) => SCHEMA_1_4_LABELS.includes(l))) problems.push(`schema ${version} does not allow assurance ${label}`);
+  }
   return problems;
 }
 
@@ -140,7 +160,10 @@ export function verifyReceipt(input: unknown, options: SubledgerVerifyOptions): 
   if (!parsed.success) return schemaFailure(RECEIPT_DOCUMENT_TYPE, parsed.error.issues);
   const doc: SignedReceipt = parsed.data;
   const r = doc.payload;
-  const schemaProblems = versionFeatureProblems(r.schema_version, r.issuer.signed_by, r.delivery_claims, false);
+  const schemaProblems = [
+    ...versionFeatureProblems(r.schema_version, r.issuer.signed_by, r.delivery_claims, false),
+    ...schema14Problems(r.schema_version, [r.delegation], [], r.delivery_claims),
+  ];
   const checks: CheckResult[] = [check("schema", schemaProblems), signatureCheck(doc, r.issued_at, options.trustedKeys), operatorSignatureCheck(r, r.issuer.operator_id, doc.operator_signatures, options)];
 
   const events: FinancialEventRecord[] = r.financial_events.map(({ allocation_version: _version, ...e }) => ({ ...e, liability_owner: null, economic_event_id: null, fx: null }));
@@ -156,7 +179,15 @@ export function verifyReceipt(input: unknown, options: SubledgerVerifyOptions): 
   checks.push(check("field_disclosure", fieldProblems));
 
   checks.push(receiptChainCheck(r, options));
+  checks.push(receiptExpiryCheck(r, options.at ?? new Date().toISOString()));
   return finish(RECEIPT_DOCUMENT_TYPE, checks);
+}
+
+/** The issuer signed expires_at, so a receipt past it no longer stands, even though its signature still verifies. */
+function receiptExpiryCheck(r: SignedReceipt["payload"], at: string): CheckResult {
+  if (r.expires_at === null) return { name: "expiry", ok: true, details: ["no expiry"] };
+  if (Date.parse(at) >= Date.parse(r.expires_at)) return check("expiry", [`receipt expired at ${r.expires_at} (checked at ${at})`]);
+  return { name: "expiry", ok: true, details: [`valid until ${r.expires_at} (checked at ${at})`] };
 }
 
 function receiptChainCheck(r: SignedReceipt["payload"], options: SubledgerVerifyOptions): CheckResult {
@@ -182,7 +213,10 @@ export function verifyClosure(input: unknown, options: SubledgerVerifyOptions): 
   if (!parsed.success) return schemaFailure(CLOSURE_DOCUMENT_TYPE, parsed.error.issues);
   const doc: SignedClosure = parsed.data;
   const c = doc.payload;
-  const schemaProblems = versionFeatureProblems(c.schema_version, c.issuer.signed_by, c.delivery_claims, c.obligation_links !== undefined);
+  const schemaProblems = [
+    ...versionFeatureProblems(c.schema_version, c.issuer.signed_by, c.delivery_claims, c.obligation_links !== undefined),
+    ...schema14Problems(c.schema_version, c.delegations, c.responses, c.delivery_claims),
+  ];
   const checks: CheckResult[] = [check("schema", schemaProblems), signatureCheck(doc, c.generated_at, options.trustedKeys), operatorSignatureCheck(c, c.issuer.operator_id, doc.operator_signatures, options)];
 
   const digestProblems = c.financial_events.filter((e) => digestOf(e.record) !== e.event_digest).map((e) => `event ${e.record.financial_event_id} digest mismatch`);
@@ -197,7 +231,7 @@ export function verifyClosure(input: unknown, options: SubledgerVerifyOptions): 
   const recomputed = rollupFor(c.task, c.delegations, c.financial_events, c.allocations);
   checks.push(check("totals", digestOf(recomputed) === digestOf(c.rollup) ? [] : ["roll-up does not match events, attribution, and allocations"]));
 
-  checks.push(check("provider_responses", responseProblems(c)));
+  checks.push(providerResponsesCheck(c));
   checks.push(closureChainCheck(c, options));
   checks.push(obligationLinkCheck(c, options));
   return finish(CLOSURE_DOCUMENT_TYPE, checks);
@@ -316,11 +350,36 @@ function allocationProblems(c: SignedClosure["payload"]): string[] {
   return problems;
 }
 
+function providerResponsesCheck(c: SignedClosure["payload"]): CheckResult {
+  const problems = responseProblems(c);
+  const notes: string[] = [];
+  const resolution = resolveAttestations(c.responses.map(responseAttestation), c.generated_at);
+  const responseIdOf = new Map(c.responses.map((r) => [r.statement_digest, r.response_id]));
+  for (const p of resolution.problems) {
+    const id = responseIdOf.get(p.digest);
+    if (p.code === "revocation_not_by_signer") problems.push(`response ${id} revokes ${p.target}, which its provider key did not sign`);
+    else notes.push(`response ${id} references ${p.target}, which is not in this closure`);
+  }
+  for (const r of c.responses) {
+    if (resolution.status[r.statement_digest].time === "not_yet_valid") problems.push(`response ${r.response_id} was issued after the closure was generated`);
+  }
+  const expected = new Map(labelResponses(c.responses, c.generated_at).map((r) => [r.response_id, r.assurance]));
+  for (const r of c.responses) {
+    for (const label of SCHEMA_1_4_LABELS) {
+      const shouldHave = expected.get(r.response_id)!.includes(label as ResponseRecord["assurance"][number]);
+      if (shouldHave !== r.assurance.includes(label as ResponseRecord["assurance"][number])) {
+        problems.push(`response ${r.response_id} ${shouldHave ? "lacks" : "carries"} assurance ${label}, which does not match its expiry and revocations at ${c.generated_at}`);
+      }
+    }
+  }
+  return problems.length > 0 ? check("provider_responses", problems) : { name: "provider_responses", ok: true, details: notes };
+}
+
 function responseProblems(c: SignedClosure["payload"]): string[] {
   const problems: string[] = [];
   const receipts = new Map(c.receipts.map((r) => [r.receipt_id, r]));
-  const delegationIds = new Set(c.delegations.map((d) => d.delegation_id));
-  for (const r of c.receipts) if (!delegationIds.has(r.delegation_id)) problems.push(`receipt ${r.receipt_id} covers a delegation outside the task`);
+  const delegations = new Map(c.delegations.map((d) => [d.delegation_id, d]));
+  for (const r of c.receipts) if (!delegations.has(r.delegation_id)) problems.push(`receipt ${r.receipt_id} covers a delegation outside the task`);
   for (const response of c.responses) {
     const receipt = receipts.get(response.receipt_id);
     const s = response.statement;
@@ -333,6 +392,13 @@ function responseProblems(c: SignedClosure["payload"]): string[] {
       problems.push(`response ${response.response_id} is not bound to receipt ${receipt.receipt_id} revision ${receipt.revision}`);
     }
     if (s.issuer_operator_id !== c.issuer.operator_id) problems.push(`response ${response.response_id} names another issuer`);
+    if (s.issued_at === undefined && (s.expires_at !== undefined || s.refs !== undefined)) problems.push(`response ${response.response_id} needs issued_at with expires_at or refs`);
+    if (s.issued_at !== undefined && s.expires_at !== undefined && Date.parse(s.expires_at) <= Date.parse(s.issued_at)) problems.push(`response ${response.response_id} expires before it was issued`);
+    if (s.execution) {
+      const declared = delegations.get(receipt.delegation_id)?.execution;
+      if (!declared) problems.push(`response ${response.response_id} cites run ${s.execution.execution_id}, but delegation ${receipt.delegation_id} records none`);
+      else if (digestOf(executionBinding(declared)) !== digestOf(s.execution)) problems.push(`response ${response.response_id} cites run ${s.execution.execution_id}, which is not the run recorded on delegation ${receipt.delegation_id}`);
+    }
     const claimsKeySigned = response.assurance.includes("provider_key_signed");
     if (!claimsKeySigned) continue;
     const sig = response.provider_signature;

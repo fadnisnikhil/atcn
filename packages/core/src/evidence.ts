@@ -1,5 +1,19 @@
-import type { EvidenceEnvelope, ObligationTerms, RecordedEvent } from "@atcn/schema";
+import { digestOf, ExecutionDescriptorSchema, type DeclaredExecution, type EvidenceEnvelope, type ObligationTerms, type RecordedEvent } from "@atcn/schema";
 import { producerRole, type EvidenceInput } from "./clearing.js";
+
+/**
+ * Runs the counterparty declared in its signed obligation.started events. A descriptor naming another agent is
+ * ignored. The digest covers the descriptor exactly as signed.
+ */
+export function declaredExecutions(events: RecordedEvent[], counterpartyAgentId: string | null): DeclaredExecution[] {
+  return events
+    .filter((e) => e.payload.event_type === "obligation.started" && e.payload.actor_id === counterpartyAgentId)
+    .flatMap((e) => {
+      const parsed = ExecutionDescriptorSchema.safeParse(e.payload.data.execution);
+      if (!parsed.success || parsed.data.agent.agent_id !== e.payload.actor_id) return [];
+      return [{ execution_id: parsed.data.execution_id, execution_digest: digestOf(e.payload.data.execution), started_event_id: e.payload.event_id, descriptor: parsed.data }];
+    });
+}
 
 /**
  * Builds clearing evidence inputs from an obligation's recorded events. Used by both

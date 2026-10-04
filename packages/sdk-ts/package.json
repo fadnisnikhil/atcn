@@ -1,6 +1,6 @@
 {
   "name": "@atcn/sdk",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "TypeScript SDK for ATCN: sign events, build terms and evidence envelopes, call the API, verify webhooks, closures, and closure packages",
   "license": "Apache-2.0",
   "repository": {
@@ -36,10 +36,10 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/core": "1.3.2",
-    "@atcn/schema": "1.3.2",
-    "@atcn/subledger": "1.3.2",
-    "@atcn/usage": "1.3.2",
+    "@atcn/core": "1.4.0",
+    "@atcn/schema": "1.4.0",
+    "@atcn/subledger": "1.4.0",
+    "@atcn/usage": "1.4.0",
     "zod": "^4.1.0"
   }
 }

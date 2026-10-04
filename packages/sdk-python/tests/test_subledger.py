@@ -18,6 +18,7 @@ from atcn import (
     canonicalize,
     countersign_payload,
     digest_of,
+    execution_binding,
     ext,
     generate_key_pair,
     public_key_from_private,
@@ -36,13 +37,29 @@ VECTORS = json.loads((Path(__file__).resolve().parents[3] / "packages/subledger/
 @pytest.mark.parametrize("case", VECTORS["statements"], ids=lambda c: c["input"]["response_type"])
 def test_response_statement_matches_typescript(case):
     given = case["input"]
-    statement = build_response_statement(given["receipt"], given["response_type"], given.get("fields"), given.get("note"), given.get("evidence"), given.get("corrections"))
+    statement = build_response_statement(
+        given["receipt"],
+        given["response_type"],
+        given.get("fields"),
+        given.get("note"),
+        given.get("evidence"),
+        given.get("corrections"),
+        execution=given.get("execution"),
+        issued_at=given.get("issued_at"),
+        expires_at=given.get("expires_at"),
+        refs=given.get("refs"),
+    )
     assert statement == case["statement"]
     assert canonicalize(statement) == case["canonical"]
     assert digest_of(statement) == case["digest"]
     assert sign_statement(statement, VECTORS["private_key"]) == case["signature"]
     assert verify_statement_signature(statement, case["signature"], VECTORS["public_key"])
     assert not verify_statement_signature({**statement, "receipt_revision": statement["receipt_revision"] + 1}, case["signature"], VECTORS["public_key"])
+
+
+def test_execution_binding_matches_typescript():
+    vector = VECTORS["execution_binding"]
+    assert execution_binding(vector["descriptor"]) == vector["binding"]
 
 
 def test_countersignature_matches_typescript():

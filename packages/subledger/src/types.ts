@@ -1,3 +1,4 @@
+import { ExecutionDescriptorSchema } from "@atcn/schema";
 import { z } from "zod";
 
 /** Agent Work Subledger record shapes (PRD v1.2 §6-§7). Amounts are integer minor units; currencies are ISO 4217. */
@@ -54,6 +55,10 @@ export const ASSURANCE_LABELS = [
   "provider_key_signed",
   "contested",
   "superseded",
+  /** A response statement past its signed expires_at at the document's time (schema 1.4). */
+  "expired",
+  /** A response statement revoked by a later statement from the same provider (schema 1.4). */
+  "revoked",
 ] as const;
 export type AssuranceLabel = (typeof ASSURANCE_LABELS)[number];
 
@@ -119,6 +124,8 @@ export const DelegationInputSchema = z.object({
   /** Whether the provider disclosed its own subdelegations. Absent data stays "unknown" (acceptance 24). */
   downstream_visibility: z.enum(["unknown", "disclosed", "none"]).default("unknown"),
   retrospective: z.boolean().default(false),
+  /** The provider's run as the buyer recorded it (for A2A, from the task and agent card). Provider statements can cite it. */
+  execution: ExecutionDescriptorSchema.optional(),
 });
 export type DelegationInput = z.infer<typeof DelegationInputSchema>;
 

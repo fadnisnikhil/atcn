@@ -11,7 +11,7 @@ from typing import Any
 from .crypto import Signed
 
 # Must equal the version in pyproject.toml (checked by a test).
-SDK_VERSION = "1.3.2"
+SDK_VERSION = "1.4.0"
 # Names the SDK and its version on every request, so the API operator can count SDK versions in use. Nothing else is sent.
 SDK_HEADER = "atcn-sdk"
 

@@ -9,6 +9,7 @@ import {
   buildSettlementLines,
   checkBalanced,
   decisionDigest,
+  declaredExecutions,
   evaluateClearing,
   planChecks,
   serviceEventPayload,
@@ -25,6 +26,7 @@ import {
   digestOf,
   generateKeyPair,
   newId,
+  sameSkill,
   sha256Digest,
   signPayload,
   verifyPayload,
@@ -232,6 +234,11 @@ export class LocalNetwork {
     const ob = this.obligation(signed.payload.obligation_id);
     const type = signed.payload.event_type;
     if (agent.agent_id !== ob.counterparty_agent_id) throw new LocalRunnerError(`${type} must be signed by the counterparty`);
+    const execution = type === "obligation.started" ? EventDataSchemas["obligation.started"].parse(signed.payload.data).execution : undefined;
+    if (execution && execution.agent.agent_id !== agent.agent_id) throw new LocalRunnerError("execution.agent.agent_id must be the signing agent");
+    if (execution && ob.terms.skill && !sameSkill(execution.skill, ob.terms.skill)) {
+      throw new LocalRunnerError(`execution must perform the agreed skill ${ob.terms.skill.namespace}/${ob.terms.skill.skill_id}`);
+    }
     const to: ObligationState = type === "obligation.started" ? "active" : "completion_proposed";
     if (type === "completion.proposed" && !["active", "insufficient_evidence"].includes(ob.state)) {
       throw new LocalRunnerError(`cannot propose completion in state ${ob.state}`);
@@ -284,6 +291,8 @@ export class LocalNetwork {
     const events = this.eventsFor(ob.obligation_id);
     const cutoff = events[events.length - 1].sequence;
     const evidence = buildEvidenceInputs(events, ob.terms, cutoff);
+    const executions = declaredExecutions(events, ob.terms.counterparty_agent_id);
+    const obligationEvidenceDigests = evidence.map((e) => e.envelope.content_digest);
 
     for (const item of planChecks({ terms: ob.terms, policy: ob.policy, evidence })) {
       this.verifierResults.push(
@@ -296,6 +305,9 @@ export class LocalNetwork {
           requireDigestMatch: ob.policy.evidence_admissibility.require_digest_match,
           allowedVerifierIds: ob.terms.verifier_agent_ids,
           resolveKey: (keyId, version) => this.verifierKey(ob.terms.verifier_agent_ids, keyId, version),
+          executions,
+          termsSkill: ob.terms.skill ?? null,
+          obligationEvidenceDigests,
         }),
       );
     }

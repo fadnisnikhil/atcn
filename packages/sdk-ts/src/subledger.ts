@@ -19,7 +19,7 @@ import {
   type SignedReceipt,
   type TaskInputSchema,
 } from "@atcn/subledger";
-import { sha256Digest } from "@atcn/schema";
+import { sha256Digest, type AttestationRef, type ExecutionBinding } from "@atcn/schema";
 import { AtcnApiError, AtcnClient, type ClientOptions } from "./client.js";
 
 type Json = Record<string, unknown>;
@@ -211,7 +211,17 @@ export class ReceiptLinkClient {
   }
   respond(
     receipt: { receipt_id: string; digest: string; revision: number },
-    response: { response_type: ResponseType; fields?: AttestableField[]; note?: string | null; evidence?: EvidenceRef[]; corrections?: Correction[] },
+    response: {
+      response_type: ResponseType;
+      fields?: AttestableField[];
+      note?: string | null;
+      evidence?: EvidenceRef[];
+      corrections?: Correction[];
+      execution?: ExecutionBinding;
+      issued_at?: string;
+      expires_at?: string;
+      refs?: AttestationRef[];
+    },
     signing?: { bindingId: string; keyId: string; privateKey: string; issuerOperatorId: string },
     opts: Opts = {},
   ) {
@@ -224,6 +234,10 @@ export class ReceiptLinkClient {
         note: response.note ?? null,
         evidence: response.evidence ?? [],
         corrections: response.corrections ?? [],
+        execution: response.execution,
+        issued_at: response.issued_at,
+        expires_at: response.expires_at,
+        refs: response.refs,
       });
       provider_signature = { binding_id: signing.bindingId, key_id: signing.keyId, value: signStatement(statement, signing.privateKey) };
     }

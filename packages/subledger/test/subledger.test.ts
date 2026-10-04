@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { digestOf, generateKeyPair, signPayload, type PublicKeyRecord } from "@atcn/schema";
+import { digestOf, executionBinding, generateKeyPair, signPayload, type ExecutionDescriptor, type PublicKeyRecord } from "@atcn/schema";
 import {
   buildClosurePayload,
   buildReceiptPayload,
@@ -19,6 +19,7 @@ import {
   type DelegationRecord,
   type FinancialEventRecord,
   type Issuer,
+  type KeyBindingRecord,
   type ResponseRecord,
   type TaskRecord,
 } from "../src/index.js";
@@ -201,14 +202,19 @@ describe("projections and offline verification", () => {
   const events = [event("fev_a", "charge", 300, { provider_id: "prv_dlg_a" }), event("fev_b", "charge", 700, { provider_id: "prv_dlg_b", evidence: { uri: "https://b.example/inv", digest: null, evidence_type: "invoice" } })];
   const attribution = { fev_a: "dlg_a", fev_b: "dlg_b" };
 
-  function closure(allocations: AllocationRecord[] = [], responses: ResponseRecord[] = [], receipts: { receipt_id: string; delegation_id: string; revision: number; digest: string }[] = []) {
-    const delegations: ClosureDelegation[] = [dA, dB].map(({ root_task_id: _r, shared_description: _s, ...d }) => d);
+  function closure(
+    allocations: AllocationRecord[] = [],
+    responses: ResponseRecord[] = [],
+    receipts: { receipt_id: string; delegation_id: string; revision: number; digest: string }[] = [],
+    options: { keyBindings?: KeyBindingRecord[]; delegationRecords?: DelegationRecord[]; generatedAt?: string } = {},
+  ) {
+    const delegations: ClosureDelegation[] = (options.delegationRecords ?? [dA, dB]).map(({ root_task_id: _r, shared_description: _s, ...d }) => d);
     return signPayload(
       buildClosurePayload({
         closure_id: "cls_1",
         version: 1,
         previous: null,
-        generated_at: T0,
+        generated_at: options.generatedAt ?? T0,
         issuer,
         task,
         delegations,
@@ -218,7 +224,7 @@ describe("projections and offline verification", () => {
         open_exceptions: [],
         receipts,
         responses,
-        key_bindings: [],
+        key_bindings: options.keyBindings ?? [],
         capture_gaps: [],
       }),
       signingKey,
@@ -328,6 +334,113 @@ describe("projections and offline verification", () => {
     expect(report.checks.find((c) => c.name === "provider_responses")!.details[0]).toMatch(/without a listed key binding/);
   });
 
+  describe("schema 1.4 runs, expiry and revocation", () => {
+    const H1 = "2026-10-01T01:00:00.000Z";
+    const D2 = "2026-10-02T00:00:00.000Z";
+    const run: ExecutionDescriptor = { execution_id: "run_1", agent: { agent_id: "agt_a", agent_version: "1.0.0" } };
+    const otherRun: ExecutionDescriptor = { execution_id: "run_2", agent: { agent_id: "agt_a", agent_version: "1.0.1" } };
+    const providerKeys = generateKeyPair();
+    const keyBindings: KeyBindingRecord[] = [
+      { binding_id: "pkb_1", provider_id: "prv_dlg_a", key_id: "pk1", public_key: providerKeys.publicKey, method: "operator_configured", created_by: "usr_1", created_at: T0, revoked_at: null },
+    ];
+    const dARun = delegation("dlg_a", null, 1, { accepted_amount_minor: 300, execution: run });
+    const receipt = receiptFor(dARun);
+    const receiptRef = { receipt_id: receipt.payload.receipt_id, digest: digestOf(receipt.payload), revision: 1, issuer_operator_id: issuer.operator_id };
+    const receiptLink = { receipt_id: receipt.payload.receipt_id, delegation_id: "dlg_a", revision: 1, digest: receiptRef.digest };
+
+    function respond(id: string, extra: Partial<Parameters<typeof buildResponseStatement>[0]>, keySigned = true): ResponseRecord {
+      const statement = buildResponseStatement({ receipt: receiptRef, response_type: "signed_attestation", fields: ["delivery.status"], ...extra });
+      return {
+        response_id: id,
+        receipt_id: receipt.payload.receipt_id,
+        receipt_revision: 1,
+        provider_id: "prv_dlg_a",
+        statement,
+        statement_digest: digestOf(statement),
+        provider_signature: keySigned ? { key_id: "pk1", binding_id: "pkb_1", value: signStatement(statement, providerKeys.privateKey) } : null,
+        assurance: keySigned ? ["link_authenticated_response", "provider_key_signed"] : ["link_authenticated_response"],
+        decision: null,
+        created_at: T0,
+      };
+    }
+
+    function verifyResponses(responses: ResponseRecord[], generatedAt = T0, delegationRecords = [dARun, dB]) {
+      const doc = closure([], responses, [receiptLink], { keyBindings, delegationRecords, generatedAt });
+      return { doc, check: verifySubledgerDocument(doc, { trustedKeys }).checks.find((c) => c.name === "provider_responses")! };
+    }
+
+    it("carries the run on the receipt and closure delegation", () => {
+      expect(receipt.payload.delegation.execution).toEqual(run);
+      expect(verifyResponses([]).doc.payload.delegations[0].execution).toEqual(run);
+    });
+
+    it("accepts a response bound to the delegation's run and rejects any other run", () => {
+      expect(verifyResponses([respond("rsp_1", { execution: executionBinding(run) })]).check).toEqual({ name: "provider_responses", ok: true, details: [] });
+      const wrong = verifyResponses([respond("rsp_1", { execution: executionBinding(otherRun) })]).check;
+      expect(wrong.ok).toBe(false);
+      expect(wrong.details[0]).toMatch(/cites run run_2, which is not the run recorded on delegation dlg_a/);
+      const none = verifyResponses([respond("rsp_1", { execution: executionBinding(run) })], T0, [dA, dB]).check;
+      expect(none.details[0]).toMatch(/delegation dlg_a records none/);
+    });
+
+    it("labels an expired response, keeps it visible and checks the label", () => {
+      const response = respond("rsp_1", { issued_at: T0, expires_at: H1 });
+      const fresh = verifyResponses([response]);
+      expect(fresh.doc.payload.responses[0].assurance).not.toContain("expired");
+      expect(fresh.check.ok).toBe(true);
+      const later = verifyResponses([response], D2);
+      expect(later.doc.payload.responses[0].assurance).toContain("expired");
+      expect(later.check.ok).toBe(true);
+      const unlabeled = structuredClone(later.doc.payload);
+      unlabeled.responses[0].assurance = unlabeled.responses[0].assurance.filter((label) => label !== "expired");
+      const report = verifySubledgerDocument(signPayload(unlabeled, signingKey), { trustedKeys });
+      expect(report.checks.find((c) => c.name === "provider_responses")!.details).toEqual([`response rsp_1 lacks assurance expired, which does not match its expiry and revocations at ${D2}`]);
+    });
+
+    it("rejects expires_at without issued_at, expiry before issue, and a response issued after the closure", () => {
+      const noIssued = verifyResponses([respond("rsp_1", { expires_at: H1 })]).check;
+      expect(noIssued.details).toContain("response rsp_1 needs issued_at with expires_at or refs");
+      const backwards = verifyResponses([respond("rsp_1", { issued_at: H1, expires_at: T0 })], D2).check;
+      expect(backwards.details).toContain("response rsp_1 expires before it was issued");
+      const future = verifyResponses([respond("rsp_1", { issued_at: D2 })]).check;
+      expect(future.details).toContain("response rsp_1 was issued after the closure was generated");
+    });
+
+    it("marks a response revoked only when the same provider key revokes it", () => {
+      const original = respond("rsp_1", { issued_at: T0 });
+      const revocation = respond("rsp_2", { issued_at: H1, refs: [{ relation: "revokes", attestation_digest: original.statement_digest, reason: "wrong run" }] });
+      const revoked = verifyResponses([original, revocation], D2);
+      expect(revoked.doc.payload.responses.map((r) => r.assurance.includes("revoked"))).toEqual([true, false]);
+      expect(revoked.check.ok).toBe(true);
+
+      const linkOnly = respond("rsp_2", { issued_at: H1, refs: [{ relation: "revokes", attestation_digest: original.statement_digest, reason: "wrong run" }] }, false);
+      const refused = verifyResponses([original, linkOnly], D2);
+      expect(refused.doc.payload.responses[0].assurance).not.toContain("revoked");
+      expect(refused.check.details).toEqual([`response rsp_2 revokes ${original.statement_digest}, which its provider key did not sign`]);
+    });
+
+    it("notes a reference to a statement outside the closure without failing", () => {
+      const missing = digestOf({ elsewhere: true });
+      const check = verifyResponses([respond("rsp_1", { issued_at: T0, refs: [{ relation: "disputes", attestation_digest: missing, reason: "see other task" }] })]).check;
+      expect(check).toEqual({ name: "provider_responses", ok: true, details: [`response rsp_1 references ${missing}, which is not in this closure`] });
+    });
+
+    it("fails a receipt checked after its expiry", () => {
+      const expiring = signPayload({ ...structuredClone(receipt.payload), expires_at: H1 }, signingKey);
+      const before = verifySubledgerDocument(expiring, { trustedKeys, at: T0 });
+      expect(before.valid).toBe(true);
+      expect(before.checks.find((c) => c.name === "expiry")!.details).toEqual([`valid until ${H1} (checked at ${T0})`]);
+      const after = verifySubledgerDocument(expiring, { trustedKeys, at: D2 });
+      expect(after.valid).toBe(false);
+      expect(after.checks.find((c) => c.name === "expiry")!.details).toEqual([`receipt expired at ${H1} (checked at ${D2})`]);
+    });
+
+    it("rejects 1.4 fields in a document that declares 1.3", () => {
+      const old = signPayload({ ...structuredClone(receipt.payload), schema_version: "1.3" }, signingKey);
+      expect(verifySubledgerDocument(old, { trustedKeys }).checks[0]).toEqual({ name: "schema", ok: false, details: ["schema 1.3 does not allow execution on delegation dlg_a"] });
+    });
+  });
+
   describe("schema versions", () => {
     function resigned(doc: { payload: object }, changes: Record<string, unknown>) {
       return signPayload({ ...structuredClone(doc.payload), ...changes }, signingKey);
@@ -346,12 +459,14 @@ describe("projections and offline verification", () => {
       recorded_at: T0,
     };
 
-    it("emits 1.3 and still verifies documents that declare 1.2", () => {
+    it("emits 1.4 and still verifies documents that declare 1.2 or 1.3", () => {
       const receipt = receiptFor(dA);
       expect(receipt.payload.schema_version).toBe(SUBLEDGER_SCHEMA_VERSION);
-      expect(SUBLEDGER_SCHEMA_VERSION).toBe("1.3");
-      expect(verifySubledgerDocument(resigned(receipt, { schema_version: "1.2" }), { trustedKeys }).valid).toBe(true);
-      expect(verifySubledgerDocument(resigned(closure(), { schema_version: "1.2" }), { trustedKeys }).valid).toBe(true);
+      expect(SUBLEDGER_SCHEMA_VERSION).toBe("1.4");
+      for (const version of ["1.2", "1.3"]) {
+        expect(verifySubledgerDocument(resigned(receipt, { schema_version: version }), { trustedKeys }).valid).toBe(true);
+        expect(verifySubledgerDocument(resigned(closure(), { schema_version: version }), { trustedKeys }).valid).toBe(true);
+      }
     });
 
     it("rejects 1.3 fields in a document that declares 1.2", () => {
@@ -368,12 +483,12 @@ describe("projections and offline verification", () => {
     });
 
     it("names an unsupported schema version explicitly instead of failing on schema or signature", () => {
-      for (const doc of [resigned(closure(), { schema_version: "1.4" }), resigned(receiptFor(dA), { schema_version: "2.0" })]) {
+      for (const doc of [resigned(closure(), { schema_version: "1.5" }), resigned(receiptFor(dA), { schema_version: "2.0" })]) {
         const report = verifySubledgerDocument(doc, { trustedKeys });
         expect(report.valid).toBe(false);
         expect(report.unsupported_schema_version).toBe(doc.payload.schema_version);
         expect(report.checks.map((c) => c.name)).toEqual(["schema_version"]);
-        expect(report.checks[0].details[0]).toContain(`unsupported schema_version ${doc.payload.schema_version}: this verifier (@atcn/subledger ${SUBLEDGER_VERIFIER_VERSION}) supports 1.2 and 1.3`);
+        expect(report.checks[0].details[0]).toContain(`unsupported schema_version ${doc.payload.schema_version}: this verifier (@atcn/subledger ${SUBLEDGER_VERIFIER_VERSION}) supports 1.2, 1.3 and 1.4`);
       }
     });
 

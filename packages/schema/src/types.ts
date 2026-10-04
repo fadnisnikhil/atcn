@@ -80,6 +80,53 @@ export const PolicyRefSchema = z.object({
 });
 export type PolicyRef = z.infer<typeof PolicyRefSchema>;
 
+// ---------- Executions and attestation references ----------
+
+/** A skill the parties agreed on. For A2A, namespace "a2a" and the AgentSkill id from the agent card. */
+export const SkillRefSchema = z.object({
+  namespace: z.string().regex(/^[a-z0-9_.-]+$/),
+  skill_id: z.string().min(1).max(200),
+  agent_card_url: z.url().optional(),
+});
+export type SkillRef = z.infer<typeof SkillRefSchema>;
+
+/**
+ * One run of work, described by the agent doing it: in obligation.started on the network, or recorded by the buyer on
+ * a subledger delegation. agent_id is the ATCN agent on the network and the provider's own identifier off it.
+ */
+export const ExecutionDescriptorSchema = z.object({
+  execution_id: z.string().min(1).max(200),
+  protocol: z
+    .object({ name: z.literal("a2a"), task_id: z.string().min(1).max(200), context_id: z.string().min(1).max(200).optional() })
+    .optional(),
+  agent: z.object({
+    agent_id: z.string().min(1).max(200),
+    agent_version: z.string().min(1).max(100),
+    card_digest: Digest.optional(),
+    model: z.object({ provider: z.string().min(1).max(100), name: z.string().min(1).max(200), version: z.string().min(1).max(100) }).optional(),
+    /** Digest of the agent's configuration, so the configuration itself is never disclosed. */
+    config_digest: Digest.optional(),
+  }),
+  skill: SkillRefSchema.optional(),
+});
+export type ExecutionDescriptor = z.infer<typeof ExecutionDescriptorSchema>;
+
+/** How an attestation cites a run: its id and the digest of its descriptor. */
+export const ExecutionBindingSchema = z.object({
+  execution_id: z.string().min(1).max(200),
+  execution_digest: Digest,
+});
+export type ExecutionBinding = z.infer<typeof ExecutionBindingSchema>;
+
+/** Only the original signer can revoke an attestation; anyone allowed to attest can dispute one. */
+export const ATTESTATION_REF_RELATIONS = ["revokes", "disputes"] as const;
+export const AttestationRefSchema = z.object({
+  relation: z.enum(ATTESTATION_REF_RELATIONS),
+  attestation_digest: Digest,
+  reason: z.string().min(1).max(2000),
+});
+export type AttestationRef = z.infer<typeof AttestationRefSchema>;
+
 // ---------- Obligations (OB-1 .. OB-9) ----------
 
 export const DeliverableSchema = z.object({
@@ -90,9 +137,12 @@ export const DeliverableSchema = z.object({
 });
 export type Deliverable = z.infer<typeof DeliverableSchema>;
 
+/** Terms that use a 1.1 field declare 1.1, so a 1.0 verifier rejects them instead of dropping the field. */
+export const TERMS_SCHEMA_VERSIONS = ["1.0", "1.1"] as const;
+
 export const ObligationTermsSchema = z
   .object({
-    schema_version: z.literal("1.0"),
+    schema_version: z.enum(TERMS_SCHEMA_VERSIONS),
     obligation_id: ObligationId,
     terms_version: z.number().int().positive(),
     parent_obligation_id: ObligationId.nullable(),
@@ -126,6 +176,11 @@ export const ObligationTermsSchema = z
     /** Verifiers both parties agreed may submit evidence and attestations. */
     verifier_agent_ids: z.array(AgentId),
     issued_at: Timestamp,
+    /** Schema 1.1: the skill the counterparty performs. Each declared run must name the same skill. */
+    skill: SkillRefSchema.optional(),
+  })
+  .refine((t) => t.skill === undefined || t.schema_version === "1.1", {
+    message: "skill requires schema_version 1.1",
   })
   .refine((t) => t.counterparty_agent_id !== null || t.payee_selection !== null, {
     message: "either counterparty_agent_id or payee_selection is required",
@@ -201,7 +256,7 @@ export const EventDataSchemas = {
     counterparty_agent_id: AgentId,
   }),
   "obligation.amended": z.object({ terms: ObligationTermsSchema, terms_digest: Digest, reason: z.string().min(1) }),
-  "obligation.started": z.object({}),
+  "obligation.started": z.object({ execution: ExecutionDescriptorSchema.optional() }),
   "completion.proposed": z.object({ note: z.string().optional() }),
   "obligation.cancelled": z.object({ reason: z.string().min(1) }),
   "event.superseded": z.object({ superseded_event_id: EventId, reason: z.string().min(1) }),
@@ -245,6 +300,42 @@ export const VerifierResultSchema = z.object({
   executed_at: Timestamp,
 });
 export type VerifierResult = z.infer<typeof VerifierResultSchema>;
+
+// ---------- External attestations (evidence type verifier_attestation) ----------
+
+/**
+ * A verifier's signed judgement of one check. The optional fields are read by external_attestation@1.1.0:
+ * the run it judged, the evidence it saw, when it was issued and expires, and earlier attestations it revokes or disputes.
+ */
+export const ExternalAttestationPayloadSchema = z
+  .object({
+    obligation_id: ObligationId,
+    deliverable_id: z.string(),
+    check_id: z.string(),
+    verifier_id: AgentId,
+    status: z.enum(["pass", "fail"]),
+    probabilistic: z.boolean(),
+    model: z.object({ name: z.string(), version: z.string(), confidence_bps: z.number().int() }).nullable(),
+    summary: z.string(),
+    execution: ExecutionBindingSchema.optional(),
+    evidence_digests: z.array(Digest).max(50).optional(),
+    issued_at: Timestamp.optional(),
+    expires_at: Timestamp.optional(),
+    refs: z.array(AttestationRefSchema).max(20).optional(),
+  })
+  .refine((a) => a.issued_at !== undefined || (a.expires_at === undefined && a.refs === undefined), {
+    message: "issued_at is required with expires_at or refs",
+  })
+  .refine((a) => a.issued_at === undefined || a.expires_at === undefined || Date.parse(a.issued_at) < Date.parse(a.expires_at), {
+    message: "expires_at must be after issued_at",
+  });
+export type ExternalAttestationPayload = z.infer<typeof ExternalAttestationPayloadSchema>;
+
+export const SignedExternalAttestationSchema = z.object({
+  payload: ExternalAttestationPayloadSchema,
+  signature: SignatureSchema,
+});
+export type SignedExternalAttestation = z.infer<typeof SignedExternalAttestationSchema>;
 
 // ---------- Clearing decisions (CL-3, CL-4, CL-5) ----------
 

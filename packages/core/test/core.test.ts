@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { digestOf, newId, type EvidenceEnvelope, type ObligationTerms, type VerifierResult } from "@atcn/schema";
+import {
+  digestOf,
+  executionBinding,
+  newId,
+  ObligationTermsSchema,
+  type EvidenceEnvelope,
+  type ExecutionDescriptor,
+  type ObligationTerms,
+  type RecordedEvent,
+  type VerifierResult,
+} from "@atcn/schema";
 import {
   allocateLargestRemainder,
   buildClearingLines,
@@ -7,6 +17,7 @@ import {
   checkChildAgainstParent,
   CODE_CHANGE_POLICY_V1,
   decisionDigest,
+  declaredExecutions,
   evaluateClearing,
   hasCycle,
   planChecks,
@@ -291,5 +302,54 @@ describe("journal", () => {
       { account_type: "payable", party_id: "b", allocation_role: "payee_share", currency: "USD", debit_minor: 0, credit_minor: 9 },
     ]);
     expect(check.balanced).toBe(false);
+  });
+});
+
+describe("runs and skills (schema 1.1 terms)", () => {
+  const skill = { namespace: "a2a", skill_id: "code-fix" };
+  const run: ExecutionDescriptor = { execution_id: "run_1", protocol: { name: "a2a", task_id: "task-1" }, agent: { agent_id: worker, agent_version: "1.0.0" }, skill };
+
+  function started(actorId: string, data: Record<string, unknown>, sequence = 1): RecordedEvent {
+    return {
+      payload: {
+        schema_version: "1.0",
+        event_id: newId("event"),
+        event_type: "obligation.started",
+        obligation_id: newId("obligation"),
+        actor_id: actorId,
+        actor_platform_id: newId("platform"),
+        event_time: "2026-10-05T00:00:00.000Z",
+        causation_ids: [],
+        data: data as RecordedEvent["payload"]["data"],
+      },
+      signature: { key_id: newId("key"), key_version: 1, algorithm: "Ed25519", value: "sig" },
+      payload_hash: digestOf(data),
+      received_at: "2026-10-05T00:00:00.000Z",
+      sequence,
+    };
+  }
+
+  it("allows a skill only in schema 1.1 terms", () => {
+    expect(ObligationTermsSchema.safeParse(terms({ schema_version: "1.1", skill })).success).toBe(true);
+    const old = ObligationTermsSchema.safeParse(terms({ skill }));
+    expect(old.success).toBe(false);
+    expect(old.error?.issues[0].message).toBe("skill requires schema_version 1.1");
+    expect(ObligationTermsSchema.parse(terms()).skill).toBeUndefined();
+  });
+
+  it("reads runs declared by the counterparty itself and skips any other", () => {
+    const declared = declaredExecutions(
+      [
+        started(worker, { execution: run }),
+        started(subworker, { execution: { ...run, execution_id: "run_2", agent: { agent_id: subworker, agent_version: "1.0.0" } } }, 2),
+        started(worker, { execution: { ...run, execution_id: "run_3", agent: { agent_id: subworker, agent_version: "1.0.0" } } }, 3),
+        started(worker, { execution: { execution_id: "run_4" } }, 4),
+        started(worker, {}, 5),
+      ],
+      worker,
+    );
+    expect(declared.map((d) => d.execution_id)).toEqual(["run_1"]);
+    expect(declared[0].execution_digest).toBe(executionBinding(run).execution_digest);
+    expect(declared[0].descriptor).toEqual(run);
   });
 });
