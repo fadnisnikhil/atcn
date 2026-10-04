@@ -1,0 +1,45 @@
+{
+  "name": "atcn-sdk",
+  "version": "1.4.0",
+  "description": "ATCN for TypeScript: re-exports @atcn/sdk. Sign obligation events, call the ATCN API, and verify closures, receipts, and closure packages offline",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fadnisnikhil/atcn.git",
+    "directory": "packages/atcn-sdk"
+  },
+  "homepage": "https://github.com/fadnisnikhil/atcn#readme",
+  "bugs": {
+    "url": "https://github.com/fadnisnikhil/atcn/issues"
+  },
+  "keywords": [
+    "atcn",
+    "ai-agents",
+    "agent-payments",
+    "reconciliation",
+    "ed25519",
+    "verification"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "atcn-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@atcn/sdk": "1.4.0"
+  }
+}

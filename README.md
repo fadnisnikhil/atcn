@@ -27,7 +27,7 @@ offline verification
   VALID   closure package of obl_...
 ```
 
-Without cloning, the same demo runs straight from npm: `npx @atcn/local-runner demo`. The packages are on npm under [`@atcn`](https://www.npmjs.com/org/atcn), and the Python SDK is `pip install atcn`.
+Without cloning, the same demo runs straight from npm: `npx @atcn/local-runner demo`. The packages are on npm under [`@atcn`](https://www.npmjs.com/org/atcn) (start with [`atcn-sdk`](https://www.npmjs.com/package/atcn-sdk)), and the Python SDK is `pip install atcn`.
 
 Then run your own job file: `npx atcn-local run job.json`. See the [quickstart](docs/QUICKSTART.md) and the [job file format](docs/JOB_FILE.md).
 
@@ -53,6 +53,7 @@ Each example runs locally and ends with a signed closure that verifies offline.
 | [`@atcn/subledger`](packages/subledger) | Agent Work Subledger: charge matching, exceptions, roll-up, signed receipts and closures, offline verification |
 | [`@atcn/usage`](packages/usage) | Opt-in usage reporting, off by default ([details](docs/USAGE_DATA.md)) |
 | [`@atcn/sdk`](packages/sdk-ts) | TypeScript SDK: event signing, API clients, capture queue, verifiers |
+| [`atcn-sdk`](packages/atcn-sdk) | Re-exports `@atcn/sdk` under an unscoped name, so `npm install atcn-sdk` works |
 | [`@atcn/adapter-a2a`](packages/adapter-a2a) | Turns an A2A v1.0 task stream into signed obligation events, against the hosted API or the local runner (in this repository; not on npm yet) |
 | [`@atcn/verify-cli`](packages/verify-cli) | `atcn-verify`: offline verifier for closures, receipts and closure packages |
 | [`@atcn/local-runner`](examples/local-runner) | `atcn-local`: runs a job end to end on your machine |

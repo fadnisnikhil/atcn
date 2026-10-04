@@ -10,6 +10,7 @@
     "packages/verifiers",
     "packages/subledger",
     "packages/sdk-ts",
+    "packages/atcn-sdk",
     "packages/adapter-a2a",
     "packages/verify-cli",
     "examples/local-runner",
