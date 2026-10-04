@@ -6,7 +6,10 @@ import {
   type EvidenceEnvelope,
   type ObligationTerms,
   type PolicyTemplate,
+  type Pricing,
+  type RefundTerms,
   type SkillRef,
+  type WitnessPolicy,
 } from "@atcn/schema";
 
 export interface TermsInput {
@@ -30,6 +33,12 @@ export interface TermsInput {
   verifierAgentIds?: string[];
   /** The skill the counterparty performs (for A2A, the AgentSkill id). Produces schema_version 1.1 terms. */
   skill?: SkillRef;
+  /** Usage prices for the usage_cost verifier. Produces schema_version 1.2 terms. */
+  pricing?: Pricing;
+  /** What happens on failure or timeout, and the post-settlement refund budget. Produces schema_version 1.2 terms. */
+  refundTerms?: RefundTerms;
+  /** Independent witnesses the witness_quorum verifier requires. Produces schema_version 1.2 terms. */
+  witnessPolicy?: WitnessPolicy;
 }
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -38,7 +47,7 @@ const DAY_MS = 24 * 3600 * 1000;
 export function buildTerms(input: TermsInput): ObligationTerms {
   const now = Date.now();
   return {
-    schema_version: input.skill ? "1.1" : "1.0",
+    schema_version: input.pricing || input.refundTerms || input.witnessPolicy ? "1.2" : input.skill ? "1.1" : "1.0",
     obligation_id: newId("obligation"),
     terms_version: 1,
     parent_obligation_id: input.parentObligationId ?? null,
@@ -62,6 +71,9 @@ export function buildTerms(input: TermsInput): ObligationTerms {
     verifier_agent_ids: input.verifierAgentIds ?? [],
     issued_at: new Date(now).toISOString(),
     ...(input.skill ? { skill: input.skill } : {}),
+    ...(input.pricing ? { pricing: input.pricing } : {}),
+    ...(input.refundTerms ? { refund_terms: input.refundTerms } : {}),
+    ...(input.witnessPolicy ? { witness_policy: input.witnessPolicy } : {}),
   };
 }
 

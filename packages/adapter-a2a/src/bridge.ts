@@ -1,4 +1,5 @@
-import { digestOf, type ExecutionDescriptor, type SignedEvent } from "@atcn/schema";
+import { createHash } from "node:crypto";
+import { digestOf, sha256Digest, type ExecutionDescriptor, type SignedEvent } from "@atcn/schema";
 import { buildEvidenceEnvelope, type EventSigner } from "@atcn/sdk";
 import type { A2AAgentCard, A2AArtifact, A2APart, A2AStreamResponse, A2ATaskState } from "./types.js";
 
@@ -7,6 +8,19 @@ export const ATCN_METADATA_KEY = "atcn";
 
 /** SkillRef namespace for A2A: the skill_id is an AgentSkill id from the worker's agent card. */
 export const A2A_SKILL_NAMESPACE = "a2a";
+
+const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+/**
+ * Evidence id derived from the obligation, the artifact id and the artifact's content digest. Every task snapshot
+ * (tasks/get returns all artifacts each time) yields the same id for the same artifact, so it is recorded once.
+ */
+export function artifactEvidenceId(obligationId: string, artifactId: string, contentDigest: string): string {
+  const hash = createHash("sha256").update(`${obligationId}\n${artifactId}\n${contentDigest}`).digest();
+  let body = "";
+  for (let i = 0; i < 26; i++) body += CROCKFORD[hash[i] % 32];
+  return `evd_${body}`;
+}
 
 /** Metadata a delegating agent attaches to the A2A message (or task) it sends for an ATCN obligation. */
 export function obligationTaskMetadata(obligationId: string, options: { skillId?: string } = {}): Record<string, unknown> {
@@ -32,6 +46,8 @@ export function skillIdFromMetadata(metadata: Record<string, unknown> | undefine
 export interface ArtifactEvidenceMetadata {
   evidence_type: string;
   verifier: string;
+  /** Every verifier that may read the evidence, when more than one does (an agent_trace for agent_trace and usage_cost). Defaults to [verifier]. */
+  verifiers?: string[];
   deliverable_ids: string[];
   content_digest?: string;
 }
@@ -65,6 +81,8 @@ export function localObligationClient(network: LocalNetworkLike): ObligationClie
 export type BridgeAction =
   | { kind: "event"; eventType: "obligation.started" | "completion.proposed"; eventId: string }
   | { kind: "evidence"; artifactId: string; evidenceId: string }
+  /** The task ended undelivered. Record `claimType` on the buyer's delegation (see outcomeClaimFromA2A); the issuer may cancel the obligation. */
+  | { kind: "terminal"; state: A2ATaskState; claimType: "provider_failure" | "cancellation"; taskId: string }
   | { kind: "skipped"; detail: string };
 
 export interface BridgeOptions {
@@ -83,22 +101,30 @@ export interface BridgeOptions {
     model?: { provider: string; name: string; version: string };
     configDigest?: string;
   };
+  /**
+   * Evidence ids the obligation already holds (for example from listEvidence), so a bridge restarted mid-task skips
+   * them. Without it, the service refuses the repeated id ("evidence_id already registered") and records nothing twice.
+   */
+  submittedEvidenceIds?: string[];
 }
 
 /**
  * Translates an A2A task stream from the worker's side into ATCN signed events:
  * WORKING -> obligation.started, evidence-tagged artifacts -> evidence.submitted,
- * COMPLETED -> completion.proposed. Terminal FAILED/CANCELED/REJECTED states are not payment facts;
- * the issuer cancels or the clearing policy decides.
+ * COMPLETED -> completion.proposed. Terminal FAILED/CANCELED/REJECTED states sign nothing on the obligation (only the
+ * issuer may cancel it); they come back as "terminal" actions naming the subledger claim to record.
  */
 export class A2AObligationBridge {
   private started = false;
   private completed = false;
   private readonly pendingChunks = new Map<string, A2APart[]>();
+  private readonly submittedEvidenceIds: Set<string>;
   /** The run this bridge declared in obligation.started, once it has. */
   execution: ExecutionDescriptor | null = null;
 
-  constructor(private readonly options: BridgeOptions) {}
+  constructor(private readonly options: BridgeOptions) {
+    this.submittedEvidenceIds = new Set(options.submittedEvidenceIds ?? []);
+  }
 
   async handle(response: A2AStreamResponse): Promise<BridgeAction[]> {
     if ("task" in response) {
@@ -142,7 +168,7 @@ export class A2AObligationBridge {
       actions.push({ kind: "event", eventType: "completion.proposed", eventId: signed.payload.event_id });
     }
     if (state === "TASK_STATE_FAILED" || state === "TASK_STATE_CANCELED" || state === "TASK_STATE_REJECTED") {
-      actions.push({ kind: "skipped", detail: `${state} is not recorded as a payment fact; the issuer may cancel or the policy will decide` });
+      actions.push({ kind: "terminal", state, claimType: state === "TASK_STATE_FAILED" ? "provider_failure" : "cancellation", taskId });
     }
     return actions;
   }
@@ -173,9 +199,14 @@ export class A2AObligationBridge {
     const part = artifact.parts[0];
     if (!part || artifact.parts.length !== 1) return { kind: "skipped", detail: `artifact ${artifact.artifactId} must have exactly one part to be evidence` };
 
+    if (part.url !== undefined && !meta.content_digest) return { kind: "skipped", detail: `url artifact ${artifact.artifactId} needs metadata.atcn.content_digest` };
+    const bytes = part.url === undefined ? partBytes(part) : null;
+    const contentDigest = bytes ? sha256Digest(bytes) : meta.content_digest!;
+    const evidenceId = artifactEvidenceId(obligationId, artifact.artifactId, contentDigest);
+    if (this.submittedEvidenceIds.has(evidenceId)) return { kind: "skipped", detail: `artifact ${artifact.artifactId} was already submitted as ${evidenceId}` };
+
     let envelope;
     if (part.url !== undefined) {
-      if (!meta.content_digest) return { kind: "skipped", detail: `url artifact ${artifact.artifactId} needs metadata.atcn.content_digest` };
       envelope = {
         ...buildEvidenceEnvelope({
           evidenceType: meta.evidence_type,
@@ -184,28 +215,29 @@ export class A2AObligationBridge {
           uri: part.url,
           retrievalMethod: "https",
           mediaType: part.mediaType ?? "application/octet-stream",
-          verifiers: [meta.verifier],
+          verifiers: meta.verifiers ?? [meta.verifier],
           deliverableIds: meta.deliverable_ids,
         }),
-        content_digest: meta.content_digest,
+        content_digest: contentDigest,
       };
     } else {
-      const bytes = partBytes(part);
       const mediaType = part.mediaType ?? (part.data !== undefined ? "application/json" : "text/plain");
-      const blob = await client.uploadBlob(bytes, mediaType);
+      const blob = await client.uploadBlob(bytes!, mediaType);
       envelope = buildEvidenceEnvelope({
         evidenceType: meta.evidence_type,
         producerId: worker.actorId,
-        content: bytes,
+        content: bytes!,
         uri: blob.uri,
         retrievalMethod: "atcn-blob",
         mediaType,
-        verifiers: [meta.verifier],
+        verifiers: meta.verifiers ?? [meta.verifier],
         deliverableIds: meta.deliverable_ids,
       });
     }
+    envelope = { ...envelope, evidence_id: evidenceId };
     await client.submitEvidence(obligationId, worker.sign("evidence.submitted", obligationId, { envelope }));
-    return { kind: "evidence", artifactId: artifact.artifactId, evidenceId: envelope.evidence_id };
+    this.submittedEvidenceIds.add(evidenceId);
+    return { kind: "evidence", artifactId: artifact.artifactId, evidenceId };
   }
 }
 

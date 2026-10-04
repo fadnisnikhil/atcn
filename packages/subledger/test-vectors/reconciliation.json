@@ -1,0 +1,107 @@
+{
+  "description": "ATCN adversarial reconciliation vectors (schema 1.5). Each vector is a sequence of steps against a buyer's subledger and the outcome ATCN must record. ATCN is an after-the-fact record: BLOCK means the attack does not change the books (refused or absorbed at intake); REVIEW means it is recorded and an open exception flags it for a person. Shaped to sit next to a2a-settlement/settlement-conformance results; run with examples/local-runner/scripts/reconciliation.ts.",
+  "artefact_id": "atcn-reconciliation-v1",
+  "schema_version": "1.0",
+  "step_ops": {
+    "task": "createTask(body); later steps name the task by its external_ref",
+    "delegation": "createDelegation(task, body); later steps name it by its external_ref",
+    "claim": "appendDelegationEvent(delegation, body)",
+    "financial_event": "recordFinancialEvent(body)",
+    "close": "closeTask(task); the closure must verify offline"
+  },
+  "vectors": [
+    {
+      "vector_id": "atcn-recon-double-charge-replay-001",
+      "attack_class": "double_charge",
+      "description": "The provider's billing feed re-sends a charge it already sent, byte for byte. It must be counted once.",
+      "steps": [
+        { "op": "task", "body": { "external_ref": "A", "currency": "USD" } },
+        { "op": "delegation", "task": "A", "body": { "external_ref": "d-a", "provider_name_stated": "Gamma", "provider_job_ref": "job-a", "currency": "USD", "accepted_amount_minor": 1000 } },
+        { "op": "claim", "delegation": "d-a", "body": { "type": "completion", "asserted_by": "provider" } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "close", "task": "A" }
+      ],
+      "expected": { "verdict": "BLOCK", "refused_steps": [], "deduplicated_steps": [4], "exception_kinds": [], "net_cost_minor": { "A": 1000 }, "closed_net_cost_minor": { "A": 1000 } }
+    },
+    {
+      "vector_id": "atcn-recon-double-charge-distinct-001",
+      "attack_class": "double_charge",
+      "description": "The same work is billed twice under two charge ids. Both are real bill lines, so both are recorded, and the total over the accepted amount is flagged.",
+      "steps": [
+        { "op": "task", "body": { "external_ref": "A", "currency": "USD" } },
+        { "op": "delegation", "task": "A", "body": { "external_ref": "d-a", "provider_name_stated": "Gamma", "provider_job_ref": "job-a", "currency": "USD", "accepted_amount_minor": 1000 } },
+        { "op": "claim", "delegation": "d-a", "body": { "type": "completion", "asserted_by": "provider" } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "provider_reference": "inv-77", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-2", "provider_reference": "inv-77", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:01:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "close", "task": "A" }
+      ],
+      "expected": { "verdict": "REVIEW", "refused_steps": [], "deduplicated_steps": [], "exception_kinds": ["amount_mismatch"], "net_cost_minor": { "A": 2000 }, "closed_net_cost_minor": { "A": 2000 } }
+    },
+    {
+      "vector_id": "atcn-recon-cross-task-replay-001",
+      "attack_class": "cross_task_replay",
+      "description": "A charge already attributed to task A is replayed under the same source id but pointed at task B. The replay is refused, the conflict is recorded, and task B is not charged.",
+      "steps": [
+        { "op": "task", "body": { "external_ref": "A", "currency": "USD" } },
+        { "op": "task", "body": { "external_ref": "B", "currency": "USD" } },
+        { "op": "delegation", "task": "A", "body": { "external_ref": "d-a", "provider_name_stated": "Gamma", "provider_job_ref": "job-a", "currency": "USD" } },
+        { "op": "delegation", "task": "B", "body": { "external_ref": "d-b", "provider_name_stated": "Gamma", "provider_job_ref": "job-b", "currency": "USD" } },
+        { "op": "claim", "delegation": "d-a", "body": { "type": "completion", "asserted_by": "provider" } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-b" } } },
+        { "op": "close", "task": "A" },
+        { "op": "close", "task": "B" }
+      ],
+      "expected": {
+        "verdict": "BLOCK",
+        "refused_steps": [{ "step": 6, "detail_substring": "source_event_id ch-1 already exists" }],
+        "deduplicated_steps": [],
+        "exception_kinds": ["duplicate_event"],
+        "net_cost_minor": { "A": 1000, "B": 0 },
+        "closed_net_cost_minor": { "A": 1000, "B": 0 }
+      }
+    },
+    {
+      "vector_id": "atcn-recon-refund-after-close-001",
+      "attack_class": "refund_after_close",
+      "description": "A refund arrives after the task was closed. It is recorded against the task and flagged; the signed closure already issued keeps its total.",
+      "steps": [
+        { "op": "task", "body": { "external_ref": "A", "currency": "USD" } },
+        { "op": "delegation", "task": "A", "body": { "external_ref": "d-a", "provider_name_stated": "Gamma", "provider_job_ref": "job-a", "currency": "USD" } },
+        { "op": "claim", "delegation": "d-a", "body": { "type": "completion", "asserted_by": "provider" } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "close", "task": "A" },
+        { "op": "financial_event", "body": { "type": "refund", "source": "gamma-billing", "source_event_id": "rf-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-02T12:00:00Z", "match": { "provider_job_ref": "job-a" } } }
+      ],
+      "expected": { "verdict": "REVIEW", "refused_steps": [], "deduplicated_steps": [], "exception_kinds": ["refund_after_close"], "net_cost_minor": { "A": 0 }, "closed_net_cost_minor": { "A": 1000 } }
+    },
+    {
+      "vector_id": "atcn-recon-charge-after-cancel-001",
+      "attack_class": "charge_after_cancel",
+      "description": "The buyer cancelled the delegation, and the provider bills it anyway. The charge is recorded and flagged until a refund, credit or reversal nets it to zero.",
+      "steps": [
+        { "op": "task", "body": { "external_ref": "A", "currency": "USD" } },
+        { "op": "delegation", "task": "A", "body": { "external_ref": "d-a", "provider_name_stated": "Gamma", "provider_job_ref": "job-a", "currency": "USD" } },
+        { "op": "claim", "delegation": "d-a", "body": { "type": "cancellation", "asserted_by": "buyer", "note": "no longer needed" } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1000, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "close", "task": "A" }
+      ],
+      "expected": { "verdict": "REVIEW", "refused_steps": [], "deduplicated_steps": [], "exception_kinds": ["charge_after_cancellation", "missing_receipt"], "net_cost_minor": { "A": 1000 }, "closed_net_cost_minor": { "A": 1000 } }
+    },
+    {
+      "vector_id": "atcn-recon-backdated-estimate-001",
+      "attack_class": "backdated_estimate",
+      "description": "After the charge is recorded, an estimate matching it exactly arrives, dated before the charge. It is kept but not used as the estimate, and flagged.",
+      "steps": [
+        { "op": "task", "body": { "external_ref": "A", "currency": "USD" } },
+        { "op": "delegation", "task": "A", "body": { "external_ref": "d-a", "provider_name_stated": "Gamma", "provider_job_ref": "job-a", "currency": "USD" } },
+        { "op": "claim", "delegation": "d-a", "body": { "type": "completion", "asserted_by": "provider" } },
+        { "op": "financial_event", "body": { "type": "charge", "source": "gamma-billing", "source_event_id": "ch-1", "amount_minor": 1500, "currency": "USD", "event_date": "2026-10-01T12:00:00Z", "match": { "provider_job_ref": "job-a" } } },
+        { "op": "financial_event", "body": { "type": "estimate", "source": "orchestrator", "source_event_id": "est-1", "amount_minor": 1500, "currency": "USD", "event_date": "2026-10-01T09:00:00Z", "match": { "provider_job_ref": "job-a" }, "expectation": { "issued_by": "operator", "source_ref": null, "basis": "back-dated to look accurate", "expires_at": null, "supersedes": null } } },
+        { "op": "close", "task": "A" }
+      ],
+      "expected": { "verdict": "REVIEW", "refused_steps": [], "deduplicated_steps": [], "exception_kinds": ["estimate_after_charge"], "net_cost_minor": { "A": 1500 }, "closed_net_cost_minor": { "A": 1500 } }
+    }
+  ]
+}

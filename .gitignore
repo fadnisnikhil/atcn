@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.tgz
 .atcn-local/
+.atcn-mcp/
 .venv/
 __pycache__/
 .pytest_cache/

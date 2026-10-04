@@ -1,5 +1,19 @@
 import { verifyClosurePackage } from "@atcn/core";
-import { ClosurePackageSchema, digestOf, executionBinding, resolveAttestations, verifyPayload, type PublicKeyRecord } from "@atcn/schema";
+import {
+  AgentTraceSchema,
+  ClosurePackageSchema,
+  canonicalize,
+  digestOf,
+  executionBinding,
+  resolveAttestations,
+  summarizeTrace,
+  traceDigest,
+  traceProblems,
+  utf8Decode,
+  verifyPayload,
+  type AgentTrace,
+  type PublicKeyRecord,
+} from "@atcn/schema";
 import { CLEARING_SOURCE, clearingFacts, settlementEvidence, undoneBatch } from "./bridge.js";
 import {
   CLOSURE_DOCUMENT_TYPE,
@@ -9,21 +23,30 @@ import {
   SIGNED_BY_HOSTED_SERVICE,
   SUBLEDGER_VERIFIER_VERSION,
   SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS,
+  type KeyBindingRecord,
   type ObligationLink,
   type OperatorKeyRecord,
   type OperatorSignature,
   type ResponseRecord,
+  type DeliveryClaim,
   type SignedClosure,
   type SignedReceipt,
 } from "./documents.js";
-import { labelResponses, receiptTotals, responseAttestation, rollupFor } from "./projection.js";
+import { DERIVED_EXCEPTION_KINDS, SERVICE_ONLY_EXCEPTION_KINDS, deriveTaskExceptions, type DerivedException } from "./exceptions.js";
+import { buildExpectationReport, expectationSignatureProblem } from "./expectations.js";
+import { closureDisclosure, deliveryStatus, labelResponses, receiptTotals, responseAttestation, rollupFor, signerKeyBindings } from "./projection.js";
 import { verifyCountersignature, verifyStatementSignature } from "./response.js";
-import { ATTESTABLE_FIELDS, type FinancialEventRecord } from "./types.js";
+import { outcomeSignatureProblem } from "./outcome.js";
+import { buildRailAttestationReport, railAttestationProblem } from "./rails.js";
+import { attestableFieldsFor, type ExceptionKind, type FinancialEventRecord } from "./types.js";
+import { usageChecksFor } from "./usage.js";
 
 export interface CheckResult {
   name: string;
   ok: boolean;
   details: string[];
+  /** Set when the check had nothing it could inspect (for example, traces committed but not supplied). Not a pass. */
+  state?: "not_inspected";
 }
 
 export interface SubledgerVerificationReport {
@@ -47,6 +70,8 @@ export interface SubledgerVerifyOptions {
   obligationPackages?: unknown[];
   /** Time to check a receipt's expires_at against (ISO 8601). Defaults to now. */
   at?: string;
+  /** Trace files (raw bytes) behind recorded usage, to recompute each usage summary from its trace. */
+  traces?: Uint8Array[];
 }
 
 const SERVICE_ACTOR = "svc_atcn";
@@ -92,6 +117,18 @@ export function verifySubledgerDocument(input: unknown, options: SubledgerVerify
 
 function finish(documentType: string, checks: CheckResult[]): SubledgerVerificationReport {
   return { valid: checks.every((c) => c.ok), document_type: documentType, checks };
+}
+
+const NOT_CANONICAL = "payload is not canonical JSON: numbers must be safe integers";
+
+/** Free-form parts of a payload, such as an embedded rail record, can hold numbers that no signature could cover. */
+function isCanonical(payload: unknown): boolean {
+  try {
+    canonicalize(payload);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function schemaFailure(documentType: string, issues: { path: PropertyKey[]; message: string }[]): SubledgerVerificationReport {
@@ -142,6 +179,100 @@ function schema14Problems(version: string, delegations: { delegation_id: string;
   return problems;
 }
 
+interface Schema15Parts {
+  delegations: { delegation_id: string; execution?: { agent: { additional_models?: unknown } }; pricing?: unknown; refund_terms?: unknown; witness_policy?: unknown }[];
+  claims: { event_id: string; usage?: unknown; signer?: unknown }[];
+  events: { financial_event_id: string; type: string; skill?: unknown; expectation?: unknown; rail_attestation?: unknown; normalized_status: string }[];
+  responses: ResponseRecord[];
+  fieldLists: string[][];
+  hasUsageChecks: boolean;
+  hasExpectationReport?: boolean;
+  hasEstimateTolerance?: boolean;
+  hasRailAttestations?: boolean;
+  hasReceiptKeyBindings?: boolean;
+  hasResolvedExceptions?: boolean;
+}
+
+/** A document that declares 1.2, 1.3 or 1.4 must not carry 1.5 fields, which those verifiers would drop before checking signatures. */
+function schema15Problems(version: string, parts: Schema15Parts): string[] {
+  if (!["1.2", "1.3", "1.4"].includes(version)) return [];
+  const problems: string[] = [];
+  for (const d of parts.delegations) {
+    if (d.pricing !== undefined) problems.push(`schema ${version} does not allow pricing on delegation ${d.delegation_id}`);
+    if (d.refund_terms !== undefined) problems.push(`schema ${version} does not allow refund_terms on delegation ${d.delegation_id}`);
+    if (d.witness_policy !== undefined) problems.push(`schema ${version} does not allow witness_policy on delegation ${d.delegation_id}`);
+    if (d.execution?.agent.additional_models !== undefined) problems.push(`schema ${version} does not allow additional_models on delegation ${d.delegation_id}`);
+  }
+  for (const c of parts.claims) {
+    if (c.usage !== undefined) problems.push(`schema ${version} does not allow usage on delivery claim ${c.event_id}`);
+    if (c.signer !== undefined) problems.push(`schema ${version} does not allow signer on delivery claim ${c.event_id}`);
+  }
+  for (const e of parts.events) {
+    if (e.skill !== undefined) problems.push(`schema ${version} does not allow skill on financial event ${e.financial_event_id}`);
+    if (e.normalized_status === "pending_finality") problems.push(`schema ${version} does not allow status pending_finality on financial event ${e.financial_event_id}`);
+    if (e.type === "estimate" || e.type === "hold") problems.push(`schema ${version} does not allow ${e.type} events (financial event ${e.financial_event_id})`);
+    if (e.expectation !== undefined) problems.push(`schema ${version} does not allow expectation on financial event ${e.financial_event_id}`);
+    if (e.rail_attestation !== undefined) problems.push(`schema ${version} does not allow rail_attestation on financial event ${e.financial_event_id}`);
+  }
+  if (parts.hasUsageChecks) problems.push(`schema ${version} does not allow usage_checks`);
+  if (parts.hasExpectationReport) problems.push(`schema ${version} does not allow expectation_report`);
+  if (parts.hasEstimateTolerance) problems.push(`schema ${version} does not allow task estimate_tolerance_bps`);
+  if (parts.hasRailAttestations) problems.push(`schema ${version} does not allow rail_attestations`);
+  if (parts.hasReceiptKeyBindings) problems.push(`schema ${version} does not allow key_bindings on a receipt`);
+  if (parts.hasResolvedExceptions) problems.push(`schema ${version} does not allow resolved_exceptions`);
+  for (const r of parts.responses) if (r.statement.role !== undefined) problems.push(`schema ${version} does not allow statement role (response ${r.response_id})`);
+  const usageFieldUsed = parts.fieldLists.some((list) => list.includes("delivery.usage")) || parts.responses.some((r) => r.statement.fields.includes("delivery.usage") || r.statement.corrections.some((c) => c.field === "delivery.usage"));
+  if (usageFieldUsed) problems.push(`schema ${version} does not allow the delivery.usage field`);
+  return problems;
+}
+
+/**
+ * Recomputes each recorded usage summary from its trace file. Usage whose trace was not supplied is reported as not
+ * inspected; it neither passes nor fails. A supplied file that is not a well-formed trace fails.
+ */
+function traceSummaryCheck(claims: Pick<DeliveryClaim, "event_id" | "usage">[], traceFiles: Uint8Array[] | undefined): CheckResult {
+  const name = "trace_summary";
+  const withUsage = claims.filter((c) => c.usage !== undefined);
+  if (withUsage.length === 0) return { name, ok: true, details: ["no usage recorded"] };
+  const problems: string[] = [];
+  const traces = new Map<string, AgentTrace>();
+  (traceFiles ?? []).forEach((bytes, index) => {
+    const trace = parseTraceFile(bytes);
+    if (typeof trace === "string") problems.push(`trace file ${index + 1}: ${trace}`);
+    else traces.set(traceDigest(trace), trace);
+  });
+  const notInspected: string[] = [];
+  const used = new Set<string>();
+  for (const claim of withUsage) {
+    const usage = claim.usage!;
+    const trace = traces.get(usage.trace_digest);
+    if (!trace) {
+      notInspected.push(`not inspected: delivery claim ${claim.event_id} (trace ${usage.trace_digest} not supplied)`);
+      continue;
+    }
+    used.add(usage.trace_digest);
+    if (digestOf(summarizeTrace(trace)) !== digestOf(usage.summary)) problems.push(`delivery claim ${claim.event_id}: recorded usage does not match its trace ${usage.trace_digest}`);
+  }
+  if (problems.length > 0) return check(name, problems);
+  const unused = [...traces.keys()].filter((d) => !used.has(d)).map((d) => `supplied trace ${d} matches no recorded usage`);
+  const inspected = withUsage.length - notInspected.length;
+  const details = [...(inspected > 0 ? [`${inspected} recorded usage summary(ies) match their traces`] : []), ...notInspected, ...unused];
+  return inspected === 0 ? { name, ok: true, details, state: "not_inspected" } : { name, ok: true, details };
+}
+
+function parseTraceFile(bytes: Uint8Array): AgentTrace | string {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(utf8Decode(bytes));
+  } catch {
+    return "not JSON";
+  }
+  const parsed = AgentTraceSchema.safeParse(raw);
+  if (!parsed.success) return `not a trace: ${parsed.error.issues[0].path.join(".")}: ${parsed.error.issues[0].message}`;
+  const problems = traceProblems(parsed.data);
+  return problems.length > 0 ? `malformed trace: ${problems.join("; ")}` : parsed.data;
+}
+
 function reversalProblems(events: FinancialEventRecord[]): string[] {
   const byId = new Map(events.map((e) => [e.financial_event_id, e]));
   const problems: string[] = [];
@@ -158,11 +289,21 @@ export function verifyReceipt(input: unknown, options: SubledgerVerifyOptions): 
   if (unsupported) return unsupported;
   const parsed = SignedReceiptSchema.safeParse(input);
   if (!parsed.success) return schemaFailure(RECEIPT_DOCUMENT_TYPE, parsed.error.issues);
+  if (!isCanonical(parsed.data.payload)) return finish(RECEIPT_DOCUMENT_TYPE, [check("schema", [NOT_CANONICAL])]);
   const doc: SignedReceipt = parsed.data;
   const r = doc.payload;
   const schemaProblems = [
     ...versionFeatureProblems(r.schema_version, r.issuer.signed_by, r.delivery_claims, false),
     ...schema14Problems(r.schema_version, [r.delegation], [], r.delivery_claims),
+    ...schema15Problems(r.schema_version, {
+      delegations: [r.delegation],
+      claims: r.delivery_claims,
+      events: r.financial_events,
+      responses: [],
+      fieldLists: [Object.keys(r.field_status), r.unverified_fields, ...r.corrections.map((c) => c.fields)],
+      hasUsageChecks: false,
+      hasReceiptKeyBindings: r.key_bindings !== undefined,
+    }),
   ];
   const checks: CheckResult[] = [check("schema", schemaProblems), signatureCheck(doc, r.issued_at, options.trustedKeys), operatorSignatureCheck(r, r.issuer.operator_id, doc.operator_signatures, options)];
 
@@ -173,14 +314,49 @@ export function verifyReceipt(input: unknown, options: SubledgerVerifyOptions): 
   checks.push(check("totals", digestOf(recomputed) === digestOf(r.totals) ? [] : ["totals do not match the listed financial events"]));
 
   const fieldProblems: string[] = [];
-  const expectedUnverified = ATTESTABLE_FIELDS.filter((f) => r.field_status[f] !== "missing");
+  const fields = attestableFieldsFor(r.schema_version);
+  const expectedUnverified = fields.filter((f) => r.field_status[f] !== "missing");
   if (digestOf(expectedUnverified) !== digestOf(r.unverified_fields)) fieldProblems.push("unverified_fields must list every non-missing field");
-  for (const f of ATTESTABLE_FIELDS) if (!r.field_status[f]) fieldProblems.push(`field_status is missing ${f}`);
+  for (const f of fields) if (!r.field_status[f]) fieldProblems.push(`field_status is missing ${f}`);
   checks.push(check("field_disclosure", fieldProblems));
 
+  checks.push(receiptSignedRecordsCheck(r, events));
   checks.push(receiptChainCheck(r, options));
   checks.push(receiptExpiryCheck(r, options.at ?? new Date().toISOString()));
+  checks.push(traceSummaryCheck(r.delivery_claims, options.traces));
   return finish(RECEIPT_DOCUMENT_TYPE, checks);
+}
+
+/**
+ * Provider-signed outcome claims and signed estimates and holds on a receipt must verify against the key bindings it
+ * lists, which must be exactly the bindings their signers name; only verified claims may be labelled provider_key_signed.
+ */
+function receiptSignedRecordsCheck(r: SignedReceipt["payload"], events: FinancialEventRecord[]): CheckResult {
+  const name = "signed_records";
+  const listed = r.key_bindings ?? [];
+  const problems: string[] = [];
+  if (digestOf(signerKeyBindings(r.delivery_claims, events, listed)) !== digestOf(listed)) problems.push("key_bindings must list exactly the bindings the receipt's signers name, in binding_id order");
+  const delegation = { provider_id: r.provider.provider_id, provider_job_ref: r.delegation.provider_job_ref };
+  for (const claim of r.delivery_claims) {
+    const labelled = claim.assurance.includes("provider_key_signed");
+    if (!claim.signer) {
+      if (labelled) problems.push(`${claim.type} claim ${claim.event_id} is labelled provider_key_signed without a signature`);
+      continue;
+    }
+    const problem = outcomeSignatureProblem({ ...claim, delegation_id: r.delegation.delegation_id }, delegation, listed);
+    if (problem) problems.push(problem);
+    else if (!labelled) problems.push(`${claim.type} claim ${claim.event_id} is signed but not labelled provider_key_signed`);
+  }
+  for (const e of events) {
+    if (!e.expectation) continue;
+    const problem = expectationSignatureProblem(e, r.provider.provider_id, listed);
+    if (problem) problems.push(problem);
+  }
+  if (problems.length > 0) return check(name, problems);
+  const claims = r.delivery_claims.filter((c) => c.signer).length;
+  const estimates = events.filter((e) => e.expectation?.signer).length;
+  if (claims + estimates === 0) return { name, ok: true, details: ["no signed claims, estimates or holds"] };
+  return { name, ok: true, details: [`${claims} provider-signed outcome claim(s) and ${estimates} signed estimate/hold record(s) verify against the listed key bindings`] };
 }
 
 /** The issuer signed expires_at, so a receipt past it no longer stands, even though its signature still verifies. */
@@ -211,11 +387,24 @@ export function verifyClosure(input: unknown, options: SubledgerVerifyOptions): 
   if (unsupported) return unsupported;
   const parsed = SignedClosureSchema.safeParse(input);
   if (!parsed.success) return schemaFailure(CLOSURE_DOCUMENT_TYPE, parsed.error.issues);
+  if (!isCanonical(parsed.data.payload)) return finish(CLOSURE_DOCUMENT_TYPE, [check("schema", [NOT_CANONICAL])]);
   const doc: SignedClosure = parsed.data;
   const c = doc.payload;
   const schemaProblems = [
     ...versionFeatureProblems(c.schema_version, c.issuer.signed_by, c.delivery_claims, c.obligation_links !== undefined),
     ...schema14Problems(c.schema_version, c.delegations, c.responses, c.delivery_claims),
+    ...schema15Problems(c.schema_version, {
+      delegations: c.delegations,
+      claims: c.delivery_claims,
+      events: c.financial_events.map((e) => e.record),
+      responses: c.responses,
+      fieldLists: [],
+      hasUsageChecks: c.usage_checks !== undefined,
+      hasExpectationReport: c.expectation_report !== undefined,
+      hasEstimateTolerance: c.task.estimate_tolerance_bps !== undefined,
+      hasRailAttestations: c.rail_attestations !== undefined,
+      hasResolvedExceptions: c.resolved_exceptions !== undefined,
+    }),
   ];
   const checks: CheckResult[] = [check("schema", schemaProblems), signatureCheck(doc, c.generated_at, options.trustedKeys), operatorSignatureCheck(c, c.issuer.operator_id, doc.operator_signatures, options)];
 
@@ -231,10 +420,160 @@ export function verifyClosure(input: unknown, options: SubledgerVerifyOptions): 
   const recomputed = rollupFor(c.task, c.delegations, c.financial_events, c.allocations);
   checks.push(check("totals", digestOf(recomputed) === digestOf(c.rollup) ? [] : ["roll-up does not match events, attribution, and allocations"]));
 
+  checks.push(derivedFieldsCheck(c));
   checks.push(providerResponsesCheck(c));
   checks.push(closureChainCheck(c, options));
   checks.push(obligationLinkCheck(c, options));
+  checks.push(usageChecksCheck(c, recomputed));
+  checks.push(expectationsCheck(c, recomputed));
+  checks.push(openExceptionsCheck(c));
+  checks.push(signedClaimsCheck(c));
+  checks.push(railAttestationsCheck(c));
+  checks.push(traceSummaryCheck(c.delivery_claims, options.traces));
   return finish(CLOSURE_DOCUMENT_TYPE, checks);
+}
+
+/**
+ * Each embedded rail attestation must verify offline (Merkle inclusion for A2A-SE, the payer's signature for x402) and
+ * agree with its event, and rail_attestations must list exactly those events.
+ */
+function railAttestationsCheck(c: SignedClosure["payload"]): CheckResult {
+  const name = "rail_attestations";
+  const problems: string[] = [];
+  for (const { record } of c.financial_events) {
+    const problem = railAttestationProblem(record);
+    if (problem) problems.push(`${record.type} ${record.financial_event_id}: rail attestation refused (${problem.code}): ${problem.detail}`);
+  }
+  const expected = buildRailAttestationReport(c.financial_events);
+  if (digestOf(expected ?? null) !== digestOf(c.rail_attestations ?? null)) problems.push("rail_attestations do not match the closure's payment and refund records");
+  if (problems.length > 0) return check(name, problems);
+  if (!expected) return { name, ok: true, details: ["no rail attestations"] };
+  return { name, ok: true, details: [`${expected.length} payment/refund record(s) rail_attested, re-verified offline without contacting the rail`, ...expected.map((e) => e.anchor)] };
+}
+
+const isRecomputableException = (kind: string) =>
+  DERIVED_EXCEPTION_KINDS.includes(kind as ExceptionKind) && !SERVICE_ONLY_EXCEPTION_KINDS.includes(kind as ExceptionKind);
+
+/** The derived exceptions a closure's own records imply at close, as of generated_at; the service must list each as open or resolved. */
+export function closureDerivedExceptions(c: SignedClosure["payload"]): DerivedException[] {
+  return deriveTaskExceptions({
+    task: c.task,
+    delegations: c.delegations,
+    claims: c.delivery_claims,
+    events: c.financial_events,
+    rollup: rollupFor(c.task, c.delegations, c.financial_events, c.allocations),
+    now: c.generated_at,
+    responses: c.responses,
+    receipts: c.receipts,
+    key_bindings: c.key_bindings,
+    closing: true,
+  }).filter((d) => isRecomputableException(d.kind));
+}
+
+/**
+ * Schema 1.5: the derived exceptions recomputed from the closure's own records, as of generated_at and at close, must
+ * each be open or listed as resolved by a person, and no open derived exception may lack its condition. Witness quorum
+ * (it needs the service's verified domains) and exceptions raised at intake are not recomputed.
+ */
+function openExceptionsCheck(c: SignedClosure["payload"]): CheckResult {
+  const name = "open_exceptions";
+  if (["1.2", "1.3", "1.4"].includes(c.schema_version)) return { name, ok: true, details: [`schema ${c.schema_version}: open exceptions are not recomputed`] };
+  const derived = closureDerivedExceptions(c);
+  const sameCondition = (x: { kind: string; delegation_id: string | null; detail: string }, d: { kind: string; delegation_id: string | null; detail: string }) =>
+    x.kind === d.kind && x.delegation_id === d.delegation_id && x.detail === d.detail;
+  const open = c.open_exceptions.filter((x) => isRecomputableException(x.kind));
+  const resolved = c.resolved_exceptions ?? [];
+  const problems: string[] = c.open_exceptions.filter((x) => x.status !== "open").map((x) => `open_exceptions lists ${x.kind} exception ${x.exception_id} with status ${x.status}`);
+  for (const d of derived) {
+    if (!open.some((x) => sameCondition(x, d)) && !resolved.some((x) => sameCondition(x, d))) problems.push(`${d.kind} on ${d.delegation_id ?? c.task.task_id} holds but is neither open nor resolved: ${d.detail}`);
+  }
+  for (const x of open) if (!derived.some((d) => sameCondition(x, d))) problems.push(`${x.kind} exception ${x.exception_id} is open but its condition does not hold at generated_at`);
+  for (const x of resolved) {
+    if (x.status === "open" || x.resolved_by === "system") problems.push(`resolved exception ${x.exception_id} must be resolved or dismissed by a person`);
+    if (!derived.some((d) => sameCondition(x, d))) problems.push(`resolved exception ${x.exception_id} (${x.kind}) does not match a condition that holds at generated_at`);
+  }
+  if (problems.length > 0) return check(name, problems);
+  return {
+    name,
+    ok: true,
+    details: [
+      `${derived.length} derived exception(s) recomputed as of generated_at: ${derived.length - resolved.length} open, ${resolved.length} resolved by a person`,
+      "not recomputed: witness_quorum_not_met (needs the service's verified domains) and exceptions raised at intake",
+    ],
+  };
+}
+
+/** Provider-signed outcome claims must verify against the listed key bindings, and only they may be labelled provider_key_signed. */
+function signedClaimsCheck(c: SignedClosure["payload"]): CheckResult {
+  const name = "signed_claims";
+  const delegationOf = new Map(c.delegations.map((d) => [d.delegation_id, d]));
+  const problems: string[] = [];
+  for (const claim of c.delivery_claims) {
+    const labelled = claim.assurance.includes("provider_key_signed");
+    if (!claim.signer) {
+      if (labelled) problems.push(`${claim.type} claim ${claim.event_id} is labelled provider_key_signed without a signature`);
+      continue;
+    }
+    const delegation = delegationOf.get(claim.delegation_id);
+    const problem = delegation ? outcomeSignatureProblem(claim, delegation, c.key_bindings) : `${claim.type} claim ${claim.event_id} names a delegation not in the closure`;
+    if (problem) problems.push(problem);
+    else if (!labelled) problems.push(`${claim.type} claim ${claim.event_id} is signed but not labelled provider_key_signed`);
+  }
+  if (problems.length > 0) return check(name, problems);
+  const signed = c.delivery_claims.filter((claim) => claim.signer).length;
+  return { name, ok: true, details: [signed > 0 ? `${signed} provider-signed outcome claim(s) verify` : "no provider-signed outcome claims"] };
+}
+
+/** Fields the closure derives from its own records must be exactly what those records produce: each delegation's delivery status, the lineage summary and the disclosure lists. */
+function derivedFieldsCheck(c: SignedClosure["payload"]): CheckResult {
+  const problems: string[] = [];
+  for (const d of c.delegations) {
+    const expected = deliveryStatus(c.delivery_claims.filter((claim) => claim.delegation_id === d.delegation_id));
+    if (d.delivery_status !== expected) problems.push(`delegation ${d.delegation_id} delivery status ${d.delivery_status} does not follow from its claims (${expected})`);
+  }
+  if (c.lineage.complete !== (c.lineage.capture_gaps.length === 0)) problems.push("lineage.complete does not match the capture gaps");
+  const unknownDownstream = c.delegations.filter((d) => d.downstream_visibility === "unknown").map((d) => d.delegation_id);
+  if (digestOf(unknownDownstream) !== digestOf(c.lineage.unknown_downstream)) problems.push("lineage.unknown_downstream does not match the delegations");
+  const disclosure = closureDisclosure({
+    task: c.task,
+    delegations: c.delegations,
+    claims: c.delivery_claims,
+    events: c.financial_events.map((e) => ({ record: e.record, attributed_to: e.attributed_to })),
+    responses: c.responses,
+    receipts: c.receipts,
+    ...(["1.2", "1.3", "1.4"].includes(c.schema_version) ? {} : { generated_at: c.generated_at }),
+  });
+  if (digestOf(disclosure) !== digestOf(c.disclosure)) problems.push("disclosure lists do not match the closure's records");
+  return check("derived_fields", problems);
+}
+
+/** The closure's usage checks must be exactly what its pricing, usage claims, roll-up and responses produce. */
+function usageChecksCheck(c: SignedClosure["payload"], rollup: ReturnType<typeof rollupFor>): CheckResult {
+  const name = "usage_checks";
+  const expected = usageChecksFor(c.delegations, c.delivery_claims, rollup, c.responses, c.receipts);
+  const recorded = c.usage_checks ?? [];
+  if (digestOf(expected) !== digestOf(recorded)) return check(name, ["usage_checks do not match the delegations' pricing, recorded usage and billed amounts"]);
+  if (recorded.length === 0) return { name, ok: true, details: ["no delegation has both pricing and recorded usage"] };
+  const outside = recorded.filter((u) => u.within_tolerance === false || u.expected_minor === null).map((u) => u.delegation_id);
+  return { name, ok: true, details: [`${recorded.length} usage check(s) recomputed`, ...(outside.length > 0 ? [`outside tolerance or unpriced: ${outside.join(", ")}`] : [])] };
+}
+
+/** Signed estimates and holds must verify, and the expectation report must be exactly what the closure's records produce. */
+function expectationsCheck(c: SignedClosure["payload"], rollup: ReturnType<typeof rollupFor>): CheckResult {
+  const name = "expectations";
+  const providerOf = new Map(c.delegations.map((d) => [d.delegation_id, d.provider_id]));
+  const problems: string[] = [];
+  for (const e of c.financial_events) {
+    if (!e.record.expectation) continue;
+    const problem = expectationSignatureProblem(e.record, providerOf.get(e.attributed_to) ?? null, c.key_bindings);
+    if (problem) problems.push(problem);
+  }
+  const expected = buildExpectationReport({ task: c.task, delegations: c.delegations, claims: c.delivery_claims, events: c.financial_events, rollup, key_bindings: c.key_bindings });
+  if (digestOf(expected ?? null) !== digestOf(c.expectation_report ?? null)) problems.push("expectation_report does not match the closure's estimates, holds and costs");
+  if (problems.length > 0) return check(name, problems);
+  if (!expected) return { name, ok: true, details: ["no estimates or holds"] };
+  const signed = expected.records.filter((r) => !r.assurance.includes("buyer_recorded")).length;
+  return { name, ok: true, details: [`${expected.records.length} estimate/hold record(s), ${signed} signed by the agent or a gateway; report recomputed`, "recorded only: nothing was enforced, blocked or reserved"] };
 }
 
 /**
@@ -400,14 +739,32 @@ function responseProblems(c: SignedClosure["payload"]): string[] {
       else if (digestOf(executionBinding(declared)) !== digestOf(s.execution)) problems.push(`response ${response.response_id} cites run ${s.execution.execution_id}, which is not the run recorded on delegation ${receipt.delegation_id}`);
     }
     const claimsKeySigned = response.assurance.includes("provider_key_signed");
-    if (!claimsKeySigned) continue;
     const sig = response.provider_signature;
     const binding = sig ? c.key_bindings.find((b) => b.binding_id === sig.binding_id && b.key_id === sig.key_id) : undefined;
+    if (s.role === "witness") problems.push(...witnessStatementProblems(response, delegations.get(receipt.delegation_id)?.provider_id ?? null, claimsKeySigned ? binding : undefined));
+    if (!claimsKeySigned) continue;
     if (!sig || !binding) problems.push(`response ${response.response_id} claims provider_key_signed without a listed key binding`);
     else if (binding.provider_id !== response.provider_id) problems.push(`response ${response.response_id} key binding belongs to another provider`);
     else if (binding.created_at > response.created_at || (binding.revoked_at !== null && binding.revoked_at <= response.created_at)) problems.push(`response ${response.response_id} signed outside the key binding's validity`);
     else if (!verifyStatementSignature(s, sig.value, binding.public_key)) problems.push(`response ${response.response_id} provider signature does not verify`);
   }
+  return problems;
+}
+
+/**
+ * A witness statement is a signed_attestation that cites the run and at least one evidence item, signed with a
+ * domain-challenged key of a provider other than the delegation's own.
+ */
+function witnessStatementProblems(response: ResponseRecord, delegationProviderId: string | null, binding: KeyBindingRecord | undefined): string[] {
+  const s = response.statement;
+  const problems: string[] = [];
+  const label = `witness response ${response.response_id}`;
+  if (s.response_type !== "signed_attestation") problems.push(`${label} must be a signed_attestation`);
+  if (!s.execution) problems.push(`${label} must cite the run it observed`);
+  if (s.evidence.length === 0) problems.push(`${label} must cite the evidence it saw`);
+  if (!binding) problems.push(`${label} must be signed with a listed key binding`);
+  else if (binding.method !== "domain_challenge") problems.push(`${label} must be signed with a domain-challenged key`);
+  if (response.provider_id !== null && response.provider_id === delegationProviderId) problems.push(`${label} is from the delegation's own provider`);
   return problems;
 }
 

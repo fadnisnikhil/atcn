@@ -1,5 +1,8 @@
 import {
+  AGENT_TRACE_EVIDENCE_TYPE,
   digestOf,
+  WITNESS_ATTESTATION_EVIDENCE_TYPE,
+  type AttestationConflict,
   type DecisionBody,
   type DeliverableOutcome,
   type EvidenceEnvelope,
@@ -12,7 +15,12 @@ import {
   type EventType,
 } from "@atcn/schema";
 
-export const CLEARING_ENGINE_ID = "atcn-clearing-engine@1.0.0";
+/**
+ * Version 1.1.0 sends a deliverable with conflicting attestations to the reviewer instead of using the newest result.
+ * Replays honour the version a decision names: decisions by 1.0.0 are replayed without attestation conflicts.
+ */
+export const CLEARING_ENGINE_ID = "atcn-clearing-engine@1.1.0";
+export const CLEARING_ENGINE_ID_V1_0 = "atcn-clearing-engine@1.0.0";
 
 /** The service event that records each decision outcome. */
 export const OUTCOME_EVENT: Record<ClearingOutcome, EventType> = {
@@ -25,7 +33,7 @@ export const OUTCOME_EVENT: Record<ClearingOutcome, EventType> = {
   expired: "obligation.expired",
 };
 
-export type ProducerRole = "issuer" | "counterparty" | "verifier" | "other";
+export type ProducerRole = "issuer" | "counterparty" | "verifier" | "witness" | "other";
 
 export interface EvidenceInput {
   envelope: EvidenceEnvelope;
@@ -44,6 +52,8 @@ export interface ClearingInput {
   evidence: EvidenceInput[];
   verifier_results: VerifierResult[];
   decision_maker?: { type: "automated" | "human"; id: string };
+  /** Conflicts among the obligation's attestations at evaluation time (see obligationAttestationConflicts). */
+  attestation_conflicts?: AttestationConflict[];
 }
 
 export function isAdmissible(evidence: EvidenceInput, policy: PolicyTemplate): boolean {
@@ -69,6 +79,25 @@ export function selectEvidence(
       return a.envelope.evidence_id < b.envelope.evidence_id ? 1 : -1;
     });
   return candidates[0] ?? null;
+}
+
+function allEvidenceFor(evidence: EvidenceInput[], policy: PolicyTemplate, evidenceType: string, deliverableId: string): EvidenceInput[] {
+  return evidence
+    .filter((e) => isAdmissible(e, policy) && e.envelope.evidence_type === evidenceType && covers(e.envelope, deliverableId))
+    .sort((a, b) => {
+      if (a.envelope.created_at !== b.envelope.created_at) return a.envelope.created_at < b.envelope.created_at ? -1 : 1;
+      return a.envelope.evidence_id < b.envelope.evidence_id ? -1 : 1;
+    });
+}
+
+/** Every admissible agent_trace evidence item covering a deliverable, oldest first. Retries each count. */
+export function traceEvidenceFor(evidence: EvidenceInput[], policy: PolicyTemplate, deliverableId: string): EvidenceInput[] {
+  return allEvidenceFor(evidence, policy, AGENT_TRACE_EVIDENCE_TYPE, deliverableId);
+}
+
+/** Every admissible witness_attestation evidence item covering a deliverable, oldest first, for witness_quorum. */
+export function witnessEvidenceFor(evidence: EvidenceInput[], policy: PolicyTemplate, deliverableId: string): EvidenceInput[] {
+  return allEvidenceFor(evidence, policy, WITNESS_ATTESTATION_EVIDENCE_TYPE, deliverableId);
 }
 
 export interface CheckPlanItem {
@@ -119,6 +148,8 @@ export function producerRole(terms: ObligationTerms, producerId: string): Produc
   if (producerId === terms.issuer_agent_id || producerId === terms.principal_id) return "issuer";
   if (producerId === terms.counterparty_agent_id) return "counterparty";
   if (terms.verifier_agent_ids.includes(producerId)) return "verifier";
+  const witnesses = terms.witness_policy?.witness_agent_ids;
+  if (terms.witness_policy && (witnesses === undefined || witnesses.includes(producerId))) return "witness";
   return "other";
 }
 
@@ -131,6 +162,7 @@ export function evaluateClearing(input: ClearingInput): DecisionBody {
   const usedEvidence = new Map<string, EvidenceInput>();
   const usedResults = new Map<string, VerifierResult>();
   const deliverableOutcomes: DeliverableOutcome[] = [];
+  const conflicts = input.attestation_conflicts ?? [];
 
   for (const deliverable of terms.deliverables) {
     const reasons: Reason[] = [];
@@ -191,6 +223,9 @@ export function evaluateClearing(input: ClearingInput): DecisionBody {
       } else if (result.kind === "probabilistic") {
         reasons.push({ code: "probabilistic_review_required", check_id: checkId, detail: `probabilistic result: ${result.status}` });
         verdicts.push(policy.probabilistic_routing === "human_review" ? "disputed" : "insufficient_evidence");
+      } else if (result.status === "fail" && check.verifier === "witness_quorum") {
+        reasons.push({ code: "witness_quorum_not_met", check_id: checkId, detail: String(result.details.refused ?? "") });
+        verdicts.push("insufficient_evidence");
       } else if (result.status === "fail") {
         reasons.push({ code: "failed_criteria", check_id: checkId });
         verdicts.push("rejected");
@@ -198,12 +233,27 @@ export function evaluateClearing(input: ClearingInput): DecisionBody {
         reasons.push({ code: "passed", check_id: checkId });
         verdicts.push("accepted");
       }
+      const onCheck = conflicts.filter((c) => c.subject === `${terms.obligation_id}/${deliverable.deliverable_id}/${checkId}`);
+      if (onCheck.length > 0) {
+        reasons.push({ code: "conflicting_attestations", check_id: checkId, detail: onCheck.map((c) => c.kind).join(",") });
+        verdicts.push("disputed");
+      }
+    }
+    const onRun = conflicts.filter((c) => c.subject.startsWith(`${terms.obligation_id}/execution:`));
+    if (onRun.length > 0) {
+      reasons.push({ code: "conflicting_attestations", detail: `the counterparty declared conflicting descriptors for ${onRun.map((c) => c.subject.split("/execution:")[1]).join(", ")}` });
+      verdicts.push("disputed");
     }
 
+    let verdict = combineVerdicts(verdicts);
+    if (verdict === "rejected" && terms.refund_terms?.on_failure === "dispute") {
+      verdict = "disputed";
+      reasons.push({ code: "failure_terms_dispute" });
+    }
     deliverableOutcomes.push({
       deliverable_id: deliverable.deliverable_id,
       amount_minor: deliverable.amount_minor,
-      outcome: combineVerdicts(verdicts),
+      outcome: verdict,
       reasons,
     });
   }

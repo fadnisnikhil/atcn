@@ -64,4 +64,43 @@ export const CODE_CHANGE_SUBTASK_POLICY_V1: PolicyTemplate = {
   allocation: { platform_fee_bps: 0 },
 };
 
-export const REFERENCE_POLICIES: PolicyTemplate[] = [CODE_CHANGE_POLICY_V1, CODE_CHANGE_POLICY_V1_1, CODE_CHANGE_SUBTASK_POLICY_V1];
+/**
+ * Usage-priced agent work: the counterparty submits the run's trace, which must belong to its declared run, and the
+ * usage in it must support each deliverable's amount under the terms' pricing (terms schema 1.2).
+ */
+export const AGENT_USAGE_POLICY_V1: PolicyTemplate = {
+  ...CODE_CHANGE_POLICY_V1,
+  policy_id: "agent-usage-checks",
+  policy_version: "1.0.0",
+  task_type: "agent_work",
+  description:
+    "Agent work accepted when the run's trace belongs to the declared run and its usage, priced with the agreed rates, supports the amount. Deliverables may also require the code-change checks.",
+  required_evidence: ["agent_trace"],
+  checks: [
+    ...CODE_CHANGE_POLICY_V1.checks,
+    { check_id: "trace", verifier: "agent_trace", verifier_version: "1.0.0", evidence_type: "agent_trace", config: {} },
+    { check_id: "usage_cost", verifier: "usage_cost", verifier_version: "1.0.0", evidence_type: "agent_trace", config: {} },
+  ],
+};
+
+/**
+ * Witnessed agent work: a deliverable requiring "witnesses" is accepted only when enough independent witnesses, as the
+ * terms' witness_policy sets, attested to the declared run. "review_bound" is the run-bound review (external_attestation@1.1.0).
+ * Witnesses may submit their attestations themselves.
+ */
+export const WITNESSED_AGENT_WORK_POLICY_V1: PolicyTemplate = {
+  ...CODE_CHANGE_POLICY_V1,
+  policy_id: "witnessed-agent-work",
+  policy_version: "1.0.0",
+  task_type: "agent_work",
+  description: "Agent work accepted when the required checks pass, including a quorum of independent witnesses to the declared run when a deliverable requires it.",
+  evidence_admissibility: { allowed_producers: ["counterparty", "verifier", "witness"], require_digest_match: true },
+  required_evidence: [],
+  checks: [
+    ...AGENT_USAGE_POLICY_V1.checks,
+    { check_id: "review_bound", verifier: "external_attestation", verifier_version: "1.1.0", evidence_type: "verifier_attestation", config: {} },
+    { check_id: "witnesses", verifier: "witness_quorum", verifier_version: "1.0.0", evidence_type: "witness_attestation", config: {} },
+  ],
+};
+
+export const REFERENCE_POLICIES: PolicyTemplate[] = [CODE_CHANGE_POLICY_V1, CODE_CHANGE_POLICY_V1_1, CODE_CHANGE_SUBTASK_POLICY_V1, AGENT_USAGE_POLICY_V1, WITNESSED_AGENT_WORK_POLICY_V1];

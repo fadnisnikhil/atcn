@@ -22,8 +22,9 @@ roll-up
   net cost USD 3.00 (charged USD 3.00)
   reported paid USD 2.90, unresolved USD 0.10
 
-open exceptions: 1
+open exceptions: 2
   missing_receipt: billed 10 USD with no completion receipt recorded
+  charge_after_cancellation: the delegation is provider failed but 10 USD is still billed; a refund, credit or reversal of it would net it to zero
 ```
 
 Foxtrot Render's settlement was broadcast but not confirmed, so the seller returned no result. The transaction may still confirm. ATCN keeps the USD 0.10 unresolved and flags it as billed without delivery, so someone checks the chain and asks for a refund if needed.

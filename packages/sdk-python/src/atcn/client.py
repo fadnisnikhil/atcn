@@ -11,7 +11,7 @@ from typing import Any
 from .crypto import Signed
 
 # Must equal the version in pyproject.toml (checked by a test).
-SDK_VERSION = "1.4.1"
+SDK_VERSION = "1.5.0"
 # Names the SDK and its version on every request, so the API operator can count SDK versions in use. Nothing else is sent.
 SDK_HEADER = "atcn-sdk"
 
@@ -105,6 +105,10 @@ class AtcnClient:
 
     def evaluate(self, obligation_id: str, policy_id: str, policy_version: str, idempotency_key: str | None = None) -> Any:
         return self.request("POST", f"/v1/obligations/{obligation_id}/evaluate", {"policy_id": policy_id, "policy_version": policy_version}, idempotency_key)
+
+    def clearing_verdict(self, obligation_id: str, rail: str | None = None, escrow_ref: str | None = None) -> Any:
+        """The decision in effect as a signed, record-only verdict, with the closure package it was read from (verify_clearing_verdict)."""
+        return self.request("GET", f"/v1/obligations/{obligation_id}/verdict", query={"rail": rail, "escrow_ref": escrow_ref})
 
     def finalize(self, decision_id: str, idempotency_key: str | None = None) -> Any:
         return self.request("POST", f"/v1/decisions/{decision_id}/finalize", None, idempotency_key)

@@ -1,0 +1,47 @@
+{
+  "name": "@atcn/mcp-server",
+  "version": "1.5.0",
+  "description": "MCP server that lets agents in Claude, Cursor and other hosts record what each job cost and verify signed closures offline. Record-only; no account needed.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fadnisnikhil/atcn.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://github.com/fadnisnikhil/atcn/tree/main/packages/mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/fadnisnikhil/atcn/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "atcn-mcp": "bin/atcn-mcp.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "atcn-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@atcn/core": "1.5.0",
+    "@atcn/local-runner": "1.5.0",
+    "@atcn/schema": "1.5.0",
+    "@atcn/sdk": "1.5.0",
+    "@atcn/subledger": "1.5.0",
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^4.1.0"
+  }
+}

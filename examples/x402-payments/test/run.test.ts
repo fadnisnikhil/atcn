@@ -11,7 +11,7 @@ describe("x402 example", () => {
     const result = await runX402Job({ dataDir: mkdtempSync(join(tmpdir(), "atcn-x402-example-")) });
     expect(result.valid).toBe(true);
     expect(result.totals.USD).toMatchObject({ charged: 300, net_cost: 300, reported_paid: 290, unresolved: 10 });
-    expect(result.open_exceptions.map((x) => x.kind)).toEqual(["missing_receipt"]);
+    expect(result.open_exceptions.map((x) => x.kind)).toEqual(["missing_receipt", "charge_after_cancellation"]);
     const delegationIds = result.closure.payload.delegations.map((d) => d.delegation_id);
     expect(delegationIds).toHaveLength(3);
     const events = result.closure.payload.financial_events;

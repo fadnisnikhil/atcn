@@ -88,4 +88,4 @@ The runner is a thin layer over the public packages. Its source, [`examples/loca
 
 To verify documents in your own code, use `verifySubledgerDocument` and `verifyClosurePackage` from `@atcn/sdk`.
 
-The Python SDK (`packages/sdk-python`) covers canonical JSON, Ed25519 event and statement signing, and webhook verification. It does not verify closures; use `atcn-verify` for that.
+The Python SDK (`packages/sdk-python`) covers canonical JSON, Ed25519 event and statement signing, webhook verification, and offline verification of closures, receipts, closure packages and clearing verdicts, with the same reports as `atcn-verify`.

@@ -3,6 +3,7 @@ import {
   REFERENCE_POLICIES,
   agreedAmount,
   buildClearingLines,
+  buildClearingVerdict,
   buildContingentLines,
   buildEvidenceInputs,
   buildReversalLines,
@@ -11,13 +12,19 @@ import {
   decisionDigest,
   declaredExecutions,
   evaluateClearing,
+  obligationAttestationConflicts,
+  packageAttestationConflicts,
   planChecks,
+  producerRole,
   serviceEventPayload,
+  traceEvidenceFor,
+  witnessEvidenceFor,
   type BuiltLines,
   type ServiceEventInput,
 } from "@atcn/core";
 import { EventSigner } from "@atcn/sdk";
 import {
+  ATTESTATION_EVIDENCE_TYPES,
   EventDataSchemas,
   OUTCOME_TO_STATE,
   SignedEventSchema,
@@ -29,8 +36,10 @@ import {
   sameSkill,
   sha256Digest,
   signPayload,
+  utf8Decode,
   verifyPayload,
   type ClearingDecision,
+  type ClearingVerdict,
   type ClosurePackage,
   type ClosurePackageBody,
   type EntryType,
@@ -74,7 +83,7 @@ import type { LocalSubledger } from "./subledger.js";
  * evaluator and verifier plugins as the hosted service, and every journal batch is recorded on the buyer's
  * subledger delegation with the shared bridge functions, so the offline verifier can recompute both sides.
  *
- * Not covered: drafts, open offers, amendments, subdelegation, cancellation, disputes, and real payment rails.
+ * Not covered: drafts, open offers, amendments, subdelegation, disputes, and real payment rails.
  */
 
 export interface LocalAgent {
@@ -250,6 +259,22 @@ export class LocalNetwork {
     return event;
   }
 
+  /**
+   * The issuer cancels before completion is proposed, as in the hosted service: the obligation becomes cancelled and
+   * its contingent amount is reversed. The linked delegation gets a cancellation claim.
+   */
+  cancelObligation(body: unknown): RecordedEvent {
+    const { signed, agent } = this.verify(body, ["obligation.cancelled"]);
+    const ob = this.obligation(signed.payload.obligation_id);
+    if (agent.agent_id !== ob.terms.issuer_agent_id) throw new LocalRunnerError("obligation.cancelled must be signed by the issuer");
+    if (!canTransition(ob.state, "cancelled")) throw new LocalRunnerError(`cannot cancel an obligation in state ${ob.state}`);
+    ob.state = "cancelled";
+    const event = this.append(signed);
+    const contingent = this.activeBatch(ob.obligation_id, "contingent");
+    if (contingent) this.reverseBatch(ob, contingent, [event.payload.event_id]);
+    return event;
+  }
+
   /** Stores evidence content and returns its blob URI, addressed by content digest. */
   uploadBlob(content: Uint8Array | string): string {
     const bytes = typeof content === "string" ? new TextEncoder().encode(content) : content;
@@ -263,7 +288,7 @@ export class LocalNetwork {
     const ob = this.obligation(signed.payload.obligation_id);
     const envelope = (signed.payload.data as { envelope: EvidenceEnvelope }).envelope;
     const allowed = [ob.terms.issuer_agent_id, ob.counterparty_agent_id, ob.terms.principal_id, ...ob.terms.verifier_agent_ids];
-    if (!allowed.includes(agent.agent_id)) throw new LocalRunnerError("only parties and agreed verifiers may submit evidence");
+    if (!allowed.includes(agent.agent_id) && producerRole(ob.terms, agent.agent_id) !== "witness") throw new LocalRunnerError("only parties, agreed verifiers and witnesses may submit evidence");
     if (envelope.producer_id !== agent.agent_id) throw new LocalRunnerError("envelope.producer_id must be the signing actor");
     if (["draft", "offered", "cancelled", "expired"].includes(ob.state)) throw new LocalRunnerError(`cannot submit evidence in state ${ob.state}`);
     for (const id of envelope.deliverable_ids) {
@@ -308,10 +333,27 @@ export class LocalNetwork {
           executions,
           termsSkill: ob.terms.skill ?? null,
           obligationEvidenceDigests,
+          ...(item.check.verifier === "usage_cost"
+            ? {
+                termsPricing: ob.terms.pricing ?? null,
+                deliverableAmountMinor: ob.terms.deliverables.find((d) => d.deliverable_id === item.deliverable_id)?.amount_minor,
+                deliverableTraces: traceEvidenceFor(evidence, ob.policy, item.deliverable_id).map((t) => ({ envelope: t.envelope, fetchResult: this.fetchBlob(t.envelope) })),
+              }
+            : {}),
+          ...(item.check.verifier === "witness_quorum"
+            ? {
+                witnessPolicy: ob.terms.witness_policy ?? null,
+                witnessAttestations: witnessEvidenceFor(evidence, ob.policy, item.deliverable_id).map((w) => ({ envelope: w.envelope, fetchResult: this.fetchBlob(w.envelope) })),
+                partyIds: [ob.terms.issuer_agent_id, ob.terms.counterparty_agent_id!, ob.terms.principal_id],
+                resolveKey: (keyId: string, version: number) => this.anyKey(keyId, version),
+                verifiedDomainOf: () => null,
+              }
+            : {}),
         }),
       );
     }
 
+    const decidedAt = now();
     const body = evaluateClearing({
       terms: ob.terms,
       terms_digest: ob.terms_digest,
@@ -321,6 +363,14 @@ export class LocalNetwork {
       completion_event_id: ob.completion_event_id,
       evidence,
       verifier_results: this.verifierResults.filter((r) => r.obligation_id === ob.obligation_id),
+      attestation_conflicts: obligationAttestationConflicts({
+        events,
+        terms: ob.terms,
+        contents: this.attestationContents(ob.obligation_id),
+        resolveKey: (keyId, version) => this.keys.find((k) => k.key_id === keyId && k.key_version === version) ?? null,
+        at: decidedAt,
+        cutoffSequence: cutoff,
+      }),
     });
     const digest = decisionDigest(body);
     const latest = ob.latest_decision_id ? this.decision(ob.latest_decision_id) : null;
@@ -333,7 +383,7 @@ export class LocalNetwork {
       ...body,
       decision_id: newId("decision"),
       decision_digest: digest,
-      decided_at: now(),
+      decided_at: decidedAt,
       supersedes_decision_id: ob.latest_decision_id,
       input_cutoff_sequence: cutoff,
     };
@@ -455,11 +505,38 @@ export class LocalNetwork {
   exportClosurePackage(obligationId: string): ClosurePackage {
     const ob = this.obligation(obligationId);
     const events = this.eventsFor(obligationId);
-    const signerKeys = new Set(events.map((e) => `${e.signature.key_id}#${e.signature.key_version}`));
     const instructionIds = new Set(this.instructions.filter((i) => i.obligation_id === obligationId).map((i) => i.instruction_id));
+    const instructions = this.instructions.filter((i) => i.obligation_id === obligationId);
+    const settlementEvents = this.settlementEvents.filter((e) => e.instruction_id !== null && instructionIds.has(e.instruction_id));
+    const evidence = this.evidence.filter((e) => e.obligation_id === obligationId).map((e) => e.envelope);
+    const attestations = evidence
+      .filter((e) => ATTESTATION_EVIDENCE_TYPES.includes(e.evidence_type))
+      .map((e) => ({ evidence_id: e.evidence_id, content: utf8Decode(this.blobs.get(e.content_digest)!) }));
+    const pendingFinality = [...instructions.map((i) => i.status), ...settlementEvents.map((s) => s.normalized_status)].includes("pending_finality");
+    const generatedAt = now();
+    const resolveKey = (keyId: string, version: number) => this.keys.find((k) => k.key_id === keyId && k.key_version === version) ?? null;
+    const contents = this.attestationContents(obligationId);
+    const signerKeys = new Set([
+      ...events.map((e) => `${e.signature.key_id}#${e.signature.key_version}`),
+      ...attestations.map((a) => {
+        const { signature } = JSON.parse(a.content) as { signature: { key_id: string; key_version: number } };
+        return `${signature.key_id}#${signature.key_version}`;
+      }),
+    ]);
+    const version11 =
+      attestations.length > 0 || pendingFinality
+        ? {
+            attestations,
+            attestation_conflicts: packageAttestationConflicts(
+              { obligations: [{ obligation_id: obligationId, parent_obligation_id: null, redacted: false, effective_terms: ob.terms, effective_terms_digest: ob.terms_digest, state: ob.state }], events, generated_at: generatedAt },
+              contents,
+              resolveKey,
+            ),
+          }
+        : null;
     const body: ClosurePackageBody = {
-      package_version: "1.0",
-      generated_at: now(),
+      package_version: version11 ? "1.1" : "1.0",
+      generated_at: generatedAt,
       root_obligation_id: obligationId,
       requested_obligation_id: obligationId,
       obligations: [
@@ -468,14 +545,41 @@ export class LocalNetwork {
       events,
       public_keys: this.keys.filter((k) => signerKeys.has(`${k.key_id}#${k.key_version}`) || k.key_id === this.serviceKey.keyId),
       policies: [ob.policy],
-      evidence: this.evidence.filter((e) => e.obligation_id === obligationId).map((e) => e.envelope),
+      evidence,
       verifier_results: this.verifierResults.filter((r) => r.obligation_id === obligationId),
       decisions: this.decisions.filter((d) => d.obligation_id === obligationId),
       posting_batches: this.batches.filter((b) => b.obligation_id === obligationId),
-      settlement_instructions: this.instructions.filter((i) => i.obligation_id === obligationId),
-      settlement_events: this.settlementEvents.filter((e) => e.instruction_id !== null && instructionIds.has(e.instruction_id)),
+      settlement_instructions: instructions,
+      settlement_events: settlementEvents,
+      ...(version11 ?? {}),
     };
     return signPayload(body, this.serviceKey);
+  }
+
+  /**
+   * The decision in effect in a closure package this network exported, as a signed clearing verdict an escrow rail can
+   * name as its release authority. The runner only publishes it; the rail decides whether to release.
+   */
+  clearingVerdict(pkg: ClosurePackage, escrow: { rail: string; escrow_ref: string } | null = null): ClearingVerdict {
+    const payload = buildClearingVerdict(pkg, { escrow, issuedAt: new Date().toISOString() });
+    return signPayload(payload, this.serviceKey);
+  }
+
+  /** Text of the obligation's attestation evidence, by content digest. */
+  private attestationContents(obligationId: string): Map<string, string> {
+    return new Map(
+      this.evidence
+        .filter((e) => e.obligation_id === obligationId && ATTESTATION_EVIDENCE_TYPES.includes(e.envelope.evidence_type))
+        .map((e) => [e.envelope.content_digest, utf8Decode(this.blobs.get(e.envelope.content_digest)!)]),
+    );
+  }
+
+  /** Any registered key valid now, for witness attestations (witnesses need not be agreed verifiers). */
+  private anyKey(keyId: string, version: number): KeyLookupResult | null {
+    const key = this.keys.find((k) => k.key_id === keyId && k.key_version === version);
+    const at = now();
+    if (!key || key.valid_from > at || (key.revoked_at && key.revoked_at <= at)) return null;
+    return { actor_id: key.actor_id, public_key: key.public_key };
   }
 
   /** Obligations backing a task's delegations, with each obligation's latest decision, for the task closure. */
@@ -695,6 +799,8 @@ export class LocalNetwork {
       );
     } else if (type === "completion.proposed") {
       this.recordClaim(link, event, "completion", "provider", typeof data.note === "string" ? data.note : null);
+    } else if (type === "obligation.cancelled") {
+      this.recordClaim(link, event, "cancellation", "buyer", `obligation cancelled by the buyer's agent: ${String(data.reason)}`);
     } else if (CLAIM_BY_OUTCOME_EVENT[type]) {
       const claim = decisionClaim(data as unknown as DecisionEventData, ob.policy.policy_id);
       this.recordClaim(link, event, CLAIM_BY_OUTCOME_EVENT[type], claim.asserted_by, claim.note);

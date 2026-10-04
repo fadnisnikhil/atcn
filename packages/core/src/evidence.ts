@@ -1,4 +1,4 @@
-import { digestOf, ExecutionDescriptorSchema, type DeclaredExecution, type EvidenceEnvelope, type ObligationTerms, type RecordedEvent } from "@atcn/schema";
+import { digestOf, EvidenceEnvelopeSchema, ExecutionDescriptorSchema, type DeclaredExecution, type EvidenceEnvelope, type ObligationTerms, type RecordedEvent } from "@atcn/schema";
 import { producerRole, type EvidenceInput } from "./clearing.js";
 
 /**
@@ -11,7 +11,15 @@ export function declaredExecutions(events: RecordedEvent[], counterpartyAgentId:
     .flatMap((e) => {
       const parsed = ExecutionDescriptorSchema.safeParse(e.payload.data.execution);
       if (!parsed.success || parsed.data.agent.agent_id !== e.payload.actor_id) return [];
-      return [{ execution_id: parsed.data.execution_id, execution_digest: digestOf(e.payload.data.execution), started_event_id: e.payload.event_id, descriptor: parsed.data }];
+      return [
+        {
+          execution_id: parsed.data.execution_id,
+          execution_digest: digestOf(e.payload.data.execution),
+          started_event_id: e.payload.event_id,
+          descriptor: parsed.data,
+          started_at: e.received_at,
+        },
+      ];
     });
 }
 
@@ -29,17 +37,21 @@ export function buildEvidenceInputs(events: RecordedEvent[], signedTerms: Obliga
     const target = String(e.payload.data.superseded_event_id);
     if (actorOf.get(target) === e.payload.actor_id) superseded.add(target);
   }
-  return visible
-    .filter((e) => e.payload.event_type === "evidence.submitted")
-    .map((e) => {
-      const envelope = e.payload.data.envelope as EvidenceEnvelope;
-      return {
+  // An evidence.submitted event without a well-formed envelope carries no evidence.
+  return visible.flatMap((e) => {
+    if (e.payload.event_type !== "evidence.submitted") return [];
+    const parsed = EvidenceEnvelopeSchema.safeParse(e.payload.data.envelope);
+    if (!parsed.success) return [];
+    const envelope = parsed.data;
+    return [
+      {
         envelope,
         event_id: e.payload.event_id,
         producer_role: producerRole(terms, envelope.producer_id),
         superseded: superseded.has(e.payload.event_id),
-      };
-    });
+      },
+    ];
+  });
 }
 
 /**

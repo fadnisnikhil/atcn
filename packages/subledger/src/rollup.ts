@@ -49,7 +49,7 @@ export interface Rollup {
   excluded_event_ids: { reversed: string[]; reversals: string[]; fx_rates: string[] };
 }
 
-/** +1 adds to buyer cost, -1 reduces it, 0 carries no cost (quotes, payment reports, reversals, rates). */
+/** +1 adds to buyer cost, -1 reduces it, 0 carries no cost (quotes, estimates, holds, payment reports, reversals, rates). */
 export function costSign(type: FinancialEventType): 1 | -1 | 0 {
   if (type === "invoice" || type === "charge" || type === "fee" || type === "adjustment") return 1;
   if (type === "refund" || type === "credit") return -1;
@@ -122,6 +122,7 @@ export function computeRollup(input: RollupInput): Rollup {
       }
       continue;
     }
+    if (event.type === "estimate" || event.type === "hold") continue;
     if (event.type === "payment_reported") {
       t.reported_paid += event.amount_minor;
       continue;
@@ -161,11 +162,14 @@ export function computeRollup(input: RollupInput): Rollup {
   }
 
   // Children before parents: deepest first, so each subtree total is final when added to its parent.
+  // A parent outside the task or a parent cycle ends the walk; the verifier's lineage check reports both.
   const depth = (id: string): number => {
     let d = 0;
     let current = nodes.get(id)!;
-    while (current.parent_id) {
+    const seen = new Set([id]);
+    while (current.parent_id && nodes.has(current.parent_id) && !seen.has(current.parent_id)) {
       d += 1;
+      seen.add(current.parent_id);
       current = nodes.get(current.parent_id)!;
     }
     return d;
@@ -175,7 +179,8 @@ export function computeRollup(input: RollupInput): Rollup {
     const node = nodes.get(id)!;
     addInto(node.total, node.direct);
     addInto(node.total, node.descendant);
-    if (node.parent_id) addInto(nodes.get(node.parent_id)!.descendant, node.total);
+    const parent = node.parent_id ? nodes.get(node.parent_id) : undefined;
+    if (parent) addInto(parent.descendant, node.total);
   }
 
   return {

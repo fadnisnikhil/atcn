@@ -2,7 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
+  AgentTraceSchema,
+  BillingRefParamsSchema,
   ClearingDecisionSchema,
+  ClearingVerdictSchema,
   ClosurePackageSchema,
   EvidenceEnvelopeSchema,
   ExecutionDescriptorSchema,
@@ -15,6 +18,7 @@ import {
   SignedEventSchema,
   SignedExternalAttestationSchema,
   TERMS_SCHEMA_VERSIONS,
+  UsageSummarySchema,
   VerifierResultSchema,
 } from "../src/index.js";
 
@@ -30,6 +34,7 @@ const schemas: Record<string, z.ZodType> = {
   "policy-template": PolicyTemplateSchema,
   "verifier-result": VerifierResultSchema,
   "clearing-decision": ClearingDecisionSchema,
+  "clearing-verdict": ClearingVerdictSchema,
   "posting-batch": PostingBatchSchema,
   "settlement-instruction": SettlementInstructionSchema,
   "settlement-event": SettlementEventSchema,
@@ -37,6 +42,9 @@ const schemas: Record<string, z.ZodType> = {
   "closure-package": ClosurePackageSchema,
   "external-attestation": SignedExternalAttestationSchema,
   "execution-descriptor": ExecutionDescriptorSchema,
+  "agent-trace": AgentTraceSchema,
+  "usage-summary": UsageSummarySchema,
+  "billing-ref-params": BillingRefParamsSchema,
 };
 
 const dir = fileURLToPath(new URL(`../schemas/${version}/`, import.meta.url));

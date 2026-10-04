@@ -1,0 +1,92 @@
+{
+  "$id": "https://schemas.atcn.dev/1.2/evidence-envelope.json",
+  "title": "evidence-envelope",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "pattern": "^evd_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "evidence_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "producer_id": {
+      "type": "string",
+      "pattern": "^((prn|agt|plt)_[0-9A-HJKMNP-TV-Z]{26}|svc_atcn)$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "content_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "uri": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retrieval_method": {
+      "type": "string",
+      "enum": [
+        "https",
+        "atcn-blob",
+        "out_of_band"
+      ]
+    },
+    "media_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "access_policy": {
+      "type": "object",
+      "properties": {
+        "visible_to": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "issuer",
+              "counterparty",
+              "reviewer",
+              "verifier"
+            ]
+          }
+        }
+      },
+      "required": [
+        "visible_to"
+      ]
+    },
+    "verifiers": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "deliverable_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "evidence_id",
+    "evidence_type",
+    "producer_id",
+    "created_at",
+    "content_digest",
+    "uri",
+    "retrieval_method",
+    "media_type",
+    "access_policy",
+    "verifiers",
+    "deliverable_ids"
+  ]
+}

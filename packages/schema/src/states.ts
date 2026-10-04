@@ -84,6 +84,23 @@ export const OUTCOME_TO_STATE: Record<ClearingOutcome, ObligationState> = {
   expired: "expired",
 };
 
-/** Normalized provider settlement states (PRD ST-3). */
-export const SETTLEMENT_STATUSES = ["submitted", "processing", "settled", "failed", "returned", "refunded", "unknown"] as const;
+/**
+ * Normalized provider settlement states (PRD ST-3). `pending_finality` means the rail reported the money as sent but
+ * can still reverse it (A2A discussion #1576); nothing posts to the journal until a later `settled` report.
+ */
+export const SETTLEMENT_STATUSES = ["submitted", "processing", "pending_finality", "settled", "failed", "returned", "refunded", "unknown"] as const;
 export type SettlementStatus = (typeof SETTLEMENT_STATUSES)[number];
+
+export const SETTLEMENT_ADAPTERS = ["manual", "sandbox", "stripe"] as const;
+export type SettlementAdapter = (typeof SETTLEMENT_ADAPTERS)[number];
+
+/**
+ * How long each rail usually takes, and at most should take, to go from `pending_finality` to `settled`. A payment
+ * still pending after `max_seconds` is raised as a `finality_overdue` exception. Manual reports are final when made.
+ * The Stripe figures follow its standard payout schedule (about two business days; a week covers holidays and delays).
+ */
+export const RAIL_FINALITY: Record<SettlementAdapter, { expected_seconds: number; max_seconds: number }> = {
+  manual: { expected_seconds: 0, max_seconds: 0 },
+  sandbox: { expected_seconds: 5, max_seconds: 60 },
+  stripe: { expected_seconds: 2 * 86_400, max_seconds: 7 * 86_400 },
+};

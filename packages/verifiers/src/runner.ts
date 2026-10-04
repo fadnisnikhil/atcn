@@ -1,9 +1,23 @@
-import { digestOf, newId, sha256Digest, type DeclaredExecution, type EvidenceEnvelope, type PolicyCheck, type SkillRef, type VerifierResult } from "@atcn/schema";
+import {
+  digestOf,
+  newId,
+  sha256Digest,
+  type DeclaredExecution,
+  type EvidenceEnvelope,
+  type PolicyCheck,
+  type Pricing,
+  type SkillRef,
+  type VerifierResult,
+  type WitnessPolicy,
+} from "@atcn/schema";
+import { agentTraceVerifier } from "./agentTrace.js";
 import { eslintLintVerifier } from "./eslint.js";
 import { externalAttestationVerifier, externalAttestationVerifierV1_1 } from "./externalAttestation.js";
 import { junitTestsVerifier } from "./junit.js";
 import { patchDigestVerifier } from "./patchDigest.js";
 import type { KeyLookupResult, VerifierPlugin } from "./types.js";
+import { usageCostVerifier } from "./usageCost.js";
+import { witnessQuorumVerifier } from "./witnessQuorum.js";
 
 export const BUILT_IN_VERIFIERS: VerifierPlugin[] = [
   junitTestsVerifier,
@@ -11,7 +25,16 @@ export const BUILT_IN_VERIFIERS: VerifierPlugin[] = [
   patchDigestVerifier,
   externalAttestationVerifier,
   externalAttestationVerifierV1_1,
+  agentTraceVerifier,
+  usageCostVerifier,
+  witnessQuorumVerifier,
 ];
+
+/** One evidence item and its retrieved bytes, as passed for usage_cost traces and witness_quorum attestations. */
+export interface TraceFetch {
+  envelope: EvidenceEnvelope;
+  fetchResult: FetchResult;
+}
 
 export type FetchResult = { ok: true; content: Uint8Array } | { ok: false; error: string };
 
@@ -28,6 +51,19 @@ export interface RunCheckInput {
   executions?: DeclaredExecution[];
   termsSkill?: SkillRef | null;
   obligationEvidenceDigests?: string[];
+  /** Usage prices from the accepted terms (schema 1.2). */
+  termsPricing?: Pricing | null;
+  deliverableAmountMinor?: number;
+  /** Every admissible agent_trace item covering the deliverable (see traceEvidenceFor in @atcn/core), for usage_cost. */
+  deliverableTraces?: TraceFetch[];
+  /** Witness requirements from the accepted terms (schema 1.2), for witness_quorum. */
+  witnessPolicy?: WitnessPolicy | null;
+  /** Every admissible witness_attestation item covering the deliverable (see witnessEvidenceFor in @atcn/core). */
+  witnessAttestations?: TraceFetch[];
+  /** The issuer, counterparty and principal. */
+  partyIds?: string[];
+  /** The registrable domain the service verified for an agent's platform, or null. */
+  verifiedDomainOf?: (agentId: string) => string | null;
   registry?: VerifierPlugin[];
   now?: Date;
 }
@@ -74,6 +110,33 @@ export function runCheck(input: RunCheckInput): VerifierResult {
   if (input.requireDigestMatch && actualDigest !== input.envelope.content_digest) {
     return result("invalid_evidence", { error: "content digest mismatch", actual_digest: actualDigest });
   }
+
+  /** Digest-checks a list of extra evidence items and adds them to the result's evidence. Returns the bytes, or a failed result. */
+  const loadAll = (items: TraceFetch[], label: string): Uint8Array[] | VerifierResult => {
+    const contents: Uint8Array[] = [];
+    for (const item of items) {
+      if (!item.fetchResult.ok) return result("unavailable", { error: `${label} ${item.envelope.evidence_id}: ${item.fetchResult.error}` });
+      if (input.requireDigestMatch && sha256Digest(item.fetchResult.content) !== item.envelope.content_digest) {
+        return result("invalid_evidence", { error: `${label} ${item.envelope.evidence_id}: content digest mismatch` });
+      }
+      contents.push(item.fetchResult.content);
+    }
+    base.evidence_ids = [...new Set([...base.evidence_ids, ...items.map((t) => t.envelope.evidence_id)])].sort();
+    base.evidence_digests = [...new Set([...base.evidence_digests, ...items.map((t) => t.envelope.content_digest)])].sort();
+    return contents;
+  };
+  let deliverableTraces: Uint8Array[] | undefined;
+  if (input.deliverableTraces) {
+    const loaded = loadAll(input.deliverableTraces, "trace");
+    if (!Array.isArray(loaded)) return loaded;
+    deliverableTraces = loaded;
+  }
+  let witnessAttestations: Uint8Array[] | undefined;
+  if (input.witnessAttestations) {
+    const loaded = loadAll(input.witnessAttestations, "witness attestation");
+    if (!Array.isArray(loaded)) return loaded;
+    witnessAttestations = loaded;
+  }
   try {
     const outcome = plugin.run({
       obligationId: input.obligationId,
@@ -87,6 +150,13 @@ export function runCheck(input: RunCheckInput): VerifierResult {
       termsSkill: input.termsSkill,
       obligationEvidenceDigests: input.obligationEvidenceDigests,
       evaluatedAt: base.executed_at,
+      termsPricing: input.termsPricing,
+      deliverableAmountMinor: input.deliverableAmountMinor,
+      deliverableTraces,
+      witnessPolicy: input.witnessPolicy,
+      witnessAttestations,
+      partyIds: input.partyIds,
+      verifiedDomainOf: input.verifiedDomainOf,
     });
     return result(outcome.status, outcome.details, outcome.kind, outcome.model);
   } catch (error) {

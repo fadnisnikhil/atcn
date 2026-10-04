@@ -14,6 +14,8 @@ export interface StatementInput {
   issued_at?: string;
   expires_at?: string;
   refs?: AttestationRef[];
+  /** Schema 1.5: "witness" when an independent witness signs that it observed the run. */
+  role?: "witness";
 }
 
 /** Builds the statement a provider responds with. Field order is irrelevant: the signature covers canonical JSON. */
@@ -33,6 +35,7 @@ export function buildResponseStatement(input: StatementInput): ResponseStatement
     ...(input.issued_at !== undefined ? { issued_at: input.issued_at } : {}),
     ...(input.expires_at !== undefined ? { expires_at: input.expires_at } : {}),
     ...(input.refs !== undefined ? { refs: input.refs } : {}),
+    ...(input.role !== undefined ? { role: input.role } : {}),
   };
 }
 

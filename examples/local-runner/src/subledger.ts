@@ -1,23 +1,31 @@
 import { digestOf, newId, signPayload } from "@atcn/schema";
 import {
+  CaptureGapInputSchema,
   DERIVED_EXCEPTION_KINDS,
+  EXPECTATION_EVENT_TYPES,
   DelegationEventInputSchema,
   DelegationInputSchema,
   FinancialEventInputSchema,
   SIGNED_BY_LOCAL_RUNNER,
   TaskInputSchema,
   buildClosurePayload,
+  delegationEventProblems,
   deliveryStatus,
   deriveTaskExceptions,
   derivedExceptionAction,
+  expectationSignatureProblem,
   mergeMatchCandidates,
+  railAttestationProblem,
   rollupFor,
+  outcomeSignatureProblem,
+  type CaptureGap,
   type ClaimAsserter,
   type DelegationRecord,
   type DeliveryClaim,
   type ExceptionKind,
   type ExceptionRecord,
   type FinancialEventRecord,
+  type KeyBindingRecord,
   type MatchCandidate,
   type ObligationLink,
   type Rollup,
@@ -90,6 +98,8 @@ export class LocalSubledger {
   readonly financialEvents: StoredFinancialEvent[] = [];
   readonly exceptions: LocalException[] = [];
   readonly closures: { task_id: string; closure: SignedClosure; digest: string }[] = [];
+  readonly keyBindings: KeyBindingRecord[] = [];
+  readonly captureGaps: (CaptureGap & { task_id: string })[] = [];
 
   constructor(
     private readonly serviceKey: ServiceKey,
@@ -112,6 +122,7 @@ export class LocalSubledger {
       retrospective: input.retrospective,
       status: "open",
       created_at: now(),
+      ...(input.estimate_tolerance_bps !== undefined ? { estimate_tolerance_bps: input.estimate_tolerance_bps } : {}),
     };
     this.tasks.push(task);
     return task;
@@ -133,6 +144,26 @@ export class LocalSubledger {
     const provider: Provider = { provider_id: newId("provider"), name: free, provider_own_id: providerOwnId };
     this.providers.push(provider);
     return provider;
+  }
+
+  /**
+   * Binds a public key to a provider (an agent's provider or a budget gateway), as the operator configured it. Signed
+   * estimates and holds name the binding; the closure lists it so the signature verifies offline.
+   */
+  bindProviderKey(providerId: string, publicKey: string, keyId: string): KeyBindingRecord {
+    if (!this.providers.some((p) => p.provider_id === providerId)) throw new LocalRunnerError(`provider ${providerId} not found`);
+    const binding: KeyBindingRecord = {
+      binding_id: newId("providerKeyBinding"),
+      provider_id: providerId,
+      key_id: keyId,
+      public_key: publicKey,
+      method: "operator_configured",
+      created_by: "local",
+      created_at: now(),
+      revoked_at: null,
+    };
+    this.keyBindings.push(binding);
+    return binding;
   }
 
   /** Callers may address a delegation by their own reference as "ext:<external_ref>", as in the hosted API. */
@@ -179,6 +210,9 @@ export class LocalSubledger {
       downstream_visibility: input.downstream_visibility,
       retrospective: input.retrospective,
       ...(input.execution ? { execution: input.execution } : {}),
+      ...(input.pricing ? { pricing: input.pricing } : {}),
+      ...(input.refund_terms ? { refund_terms: input.refund_terms } : {}),
+      ...(input.witness_policy ? { witness_policy: input.witness_policy } : {}),
       created_at: now(),
     };
     this.delegations.push(delegation);
@@ -198,6 +232,8 @@ export class LocalSubledger {
    */
   appendDelegationEvent(delegationId: string, body: unknown, networkRecord?: { assertedBy: ClaimAsserter }): DeliveryClaim {
     const input = parseWith(DelegationEventInputSchema, body, "delegation event");
+    const problems = delegationEventProblems(input);
+    if (problems.length > 0) throw new LocalRunnerError(`invalid delegation event: ${problems.join("; ")}`);
     const delegation = this.delegations.find((d) => d.delegation_id === delegationId);
     if (!delegation) throw new LocalRunnerError(`delegation ${delegationId} not found`);
     if (input.type === "correction") {
@@ -213,7 +249,10 @@ export class LocalSubledger {
       for (const [field, value] of Object.entries(input.terms)) {
         if (value === undefined) continue;
         const normalized = field === "quote_valid_until" || field === "expected_delivery" ? iso(value as string | null) : value;
-        Object.assign(delegation, { [field]: normalized });
+        if (field === "pricing" && value === null) delete delegation.pricing;
+        else if (field === "refund_terms" && value === null) delete delegation.refund_terms;
+        else if (field === "witness_policy" && value === null) delete delegation.witness_policy;
+        else Object.assign(delegation, { [field]: normalized });
       }
     } else if (input.terms) {
       throw new LocalRunnerError("only terms_update carries terms");
@@ -223,15 +262,19 @@ export class LocalSubledger {
       delegation_id: delegationId,
       type: input.type,
       asserted_by: networkRecord?.assertedBy ?? input.asserted_by,
-      assurance: [networkRecord ? "network_recorded" : "buyer_recorded"],
+      assurance: [networkRecord ? "network_recorded" : input.signer ? "provider_key_signed" : "buyer_recorded"],
       note: input.note,
       evidence: input.evidence,
+      ...(input.usage ? { usage: input.usage } : {}),
       supersedes_event_id: input.supersedes_event_id,
       reason: input.reason,
       retrospective: input.retrospective,
       occurred_at: iso(input.occurred_at) ?? now(),
       recorded_at: now(),
+      ...(input.signer ? { signer: input.signer } : {}),
     };
+    const signatureProblem = outcomeSignatureProblem(claim, delegation, this.keyBindings);
+    if (signatureProblem) throw new LocalRunnerError(signatureProblem);
     this.claims.push(claim);
     this.refreshExceptions(delegation.root_task_id);
     return claim;
@@ -267,8 +310,13 @@ export class LocalSubledger {
       if (reversed.record.amount_minor !== input.amount_minor || reversed.record.currency !== input.currency) {
         throw new LocalRunnerError("a reversal must match the reversed event's amount and currency");
       }
+      if (EXPECTATION_EVENT_TYPES.includes(reversed.record.type)) throw new LocalRunnerError("estimates and holds are revised by a superseding record, not reversed");
     } else if (input.reverses_event_id) {
       throw new LocalRunnerError("only a reversal may set reverses_event_id");
+    }
+    const supersedes = input.expectation?.supersedes ?? null;
+    if (supersedes !== null && !this.financialEvents.some((e) => e.record.source === input.source && e.record.type === input.type && e.record.source_event_id === supersedes)) {
+      throw new LocalRunnerError(`superseded ${input.type} ${input.source}/${supersedes} not found`);
     }
 
     const record: FinancialEventRecord = {
@@ -294,7 +342,18 @@ export class LocalSubledger {
       settles_event_id: input.settles_event_id,
       fx: input.fx,
       reason: input.reason,
+      ...(input.skill ? { skill: input.skill } : {}),
+      ...(input.expectation ? { expectation: input.expectation } : {}),
+      ...(input.rail_attestation ? { rail_attestation: input.rail_attestation } : {}),
     };
+    const railProblem = railAttestationProblem(record);
+    if (railProblem) throw new LocalRunnerError(`rail attestation refused (${railProblem.code}): ${railProblem.detail}`);
+    const candidates = reversed || input.type === "fx_rate" ? [] : this.matchCandidates(input);
+    if (record.expectation?.signer) {
+      const matchedDelegation = candidates.length === 1 && candidates[0].delegation_id ? this.delegation(candidates[0].delegation_id) : null;
+      const problem = expectationSignatureProblem(record, matchedDelegation ? matchedDelegation.provider_id : record.expectation.signer.provider_id, this.keyBindings);
+      if (problem) throw new LocalRunnerError(problem);
+    }
     const stored: StoredFinancialEvent = { record, content_digest: contentDigest, attribution: null };
     this.financialEvents.push(stored);
 
@@ -302,11 +361,11 @@ export class LocalSubledger {
     if (reversed) {
       stored.attribution = reversed.attribution;
     } else if (input.type !== "fx_rate") {
-      const candidates = this.matchCandidates(input);
       if (candidates.length === 1) {
         stored.attribution = { task_id: candidates[0].task_id, delegation_id: candidates[0].delegation_id };
       } else {
-        const kind = candidates.length > 1 ? "ambiguous_match" : "unmatched_charge";
+        const unmatchedKind = EXPECTATION_EVENT_TYPES.includes(input.type) ? "unmatched_estimate" : "unmatched_charge";
+        const kind = candidates.length > 1 ? "ambiguous_match" : unmatchedKind;
         exceptionIds.push(
           this.openException({
             kind,
@@ -331,10 +390,13 @@ export class LocalSubledger {
     return { task, rollup, open_exceptions: this.exceptions.filter((x) => x.task_id === taskId && x.status === "open") };
   }
 
-  /** Recomputes condition-based exceptions for one task and resolves those whose condition cleared. */
-  refreshExceptions(taskId: string): void {
-    const { task, claims, delegations, rollup } = this.state(taskId);
-    const derived = deriveTaskExceptions({ task, delegations, claims, rollup, now: now() });
+  /**
+   * Recomputes condition-based exceptions for one task and resolves those whose condition cleared. `closing` is true
+   * while the task is being closed (and stays true once it is closed).
+   */
+  refreshExceptions(taskId: string, closing = false, at = now()): void {
+    const { task, claims, delegations, events, rollup } = this.state(taskId);
+    const derived = deriveTaskExceptions({ task, delegations, claims, events, rollup, now: at, key_bindings: this.keyBindings, closing: closing || task.status === "closed" });
     for (const d of derived) {
       const latest = this.exceptions.filter((x) => x.dedupe_key === d.dedupe_key).at(-1) ?? null;
       const action = derivedExceptionAction(latest, d);
@@ -351,11 +413,31 @@ export class LocalSubledger {
   }
 
   /**
+   * Records part of the delegation chain that was not captured (for example a reported sub-task with no outcome). The
+   * closure then shows lineage as incomplete, and an incomplete_lineage exception stays open, as in the hosted API.
+   */
+  reportCaptureGap(taskId: string, body: unknown): CaptureGap {
+    const input = parseWith(CaptureGapInputSchema, body, "capture gap");
+    this.task(taskId);
+    if (input.delegation_id) {
+      input.delegation_id = this.resolveDelegationId(input.delegation_id);
+      if (!this.delegations.some((d) => d.delegation_id === input.delegation_id && d.root_task_id === taskId)) throw new LocalRunnerError(`delegation ${input.delegation_id} not found in this task`);
+    }
+    const gap = { gap_id: newId("captureGap"), task_id: taskId, delegation_id: input.delegation_id, kind: input.kind, detail: input.detail, reported_at: now() };
+    this.captureGaps.push(gap);
+    this.openException({ kind: "incomplete_lineage", dedupeKey: `incomplete_lineage:${gap.gap_id}`, detail: `${input.kind}: ${input.detail}`, taskId, delegationId: input.delegation_id });
+    const { task_id: _task, ...captureGap } = gap;
+    return captureGap;
+  }
+
+  /**
    * Closes the task: a signed, versioned snapshot of lineage, claims, events, the roll-up, open exceptions, and the
    * obligations backing delegations. Closing again creates the next version. Signed by the runner's own key.
    */
   closeTask(taskId: string, obligationLinks: ObligationLink[]): { closure: SignedClosure; digest: string } {
-    this.refreshExceptions(taskId);
+    // The verifier recomputes derived exceptions as of generated_at, so they are derived at that same instant.
+    const generatedAt = now();
+    this.refreshExceptions(taskId, true, generatedAt);
     const { task, claims, delegations, events } = this.state(taskId);
     const previous = this.closures.filter((c) => c.task_id === taskId).at(-1) ?? null;
     const eventIds = new Set(events.map((e) => e.record.financial_event_id));
@@ -364,7 +446,7 @@ export class LocalSubledger {
       closure_id: newId("closure"),
       version: previous ? previous.closure.payload.version + 1 : 1,
       previous: previous ? { closure_id: previous.closure.payload.closure_id, digest: previous.digest } : null,
-      generated_at: now(),
+      generated_at: generatedAt,
       issuer: { operator_id: "local", operator_name: this.operatorName, signed_by: SIGNED_BY_LOCAL_RUNNER },
       task: taskRecord(task),
       delegations: delegations.map(({ root_task_id: _root, shared_description: _shared, ...d }) => d),
@@ -374,8 +456,8 @@ export class LocalSubledger {
       open_exceptions: openExceptions.map(({ task_id: _task, dedupe_key: _key, resolved_by: _by, ...x }) => x),
       receipts: [],
       responses: [],
-      key_bindings: [],
-      capture_gaps: [],
+      key_bindings: this.keyBindingsFor(delegations, events),
+      capture_gaps: this.captureGaps.filter((g) => g.task_id === taskId).map(({ task_id: _task, ...gap }) => gap),
       obligation_links: obligationLinks,
     });
     const closure = signPayload(payload, this.serviceKey) as SignedClosure;
@@ -383,6 +465,15 @@ export class LocalSubledger {
     this.closures.push({ task_id: taskId, closure, digest });
     task.status = "closed";
     return { closure, digest };
+  }
+
+  /** Bindings of the task's providers and of the signers of its estimates and holds. */
+  private keyBindingsFor(delegations: DelegationRecord[], events: { record: FinancialEventRecord }[]): KeyBindingRecord[] {
+    const providerIds = new Set([
+      ...delegations.map((d) => d.provider_id).filter((id): id is string => id !== null),
+      ...events.map((e) => e.record.expectation?.signer?.provider_id).filter((id): id is string => id !== undefined),
+    ]);
+    return this.keyBindings.filter((b) => providerIds.has(b.provider_id));
   }
 
   private findEvent(financialEventId: string): StoredFinancialEvent | undefined {

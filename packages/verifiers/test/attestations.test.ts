@@ -1,17 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
   digestOf,
+  disputesInEffect,
   executionBinding,
+  findConflicts,
+  inEffect,
   resolveAttestations,
   sha256Digest,
   utf8Encode,
   verifyPayload,
   type EvidenceEnvelope,
   type ExecutionDescriptor,
+  type ExternalAttestationPayload,
   type Signed,
   type SkillRef,
+  type WitnessPolicy,
 } from "@atcn/schema";
-import { externalAttestationVerifier, externalAttestationVerifierV1_1, type VerifierPlugin } from "../src/index.js";
+import { externalAttestationVerifier, externalAttestationVerifierV1_1, witnessQuorumVerifier, type VerifierPlugin } from "../src/index.js";
 import fixtures from "../test-vectors/attestations.json";
 
 const plugins: Record<string, VerifierPlugin> = { "1.0.0": externalAttestationVerifier, "1.1.0": externalAttestationVerifierV1_1 };
@@ -81,6 +86,59 @@ describe("adversarial attestation fixtures", () => {
       expect(resolution.problems.map((p) => ({ attestation: digests.indexOf(p.digest), code: p.code, target: digests.includes(p.target) ? digests.indexOf(p.target) : null }))).toEqual(
         c.expected.problems,
       );
+    });
+  });
+
+  describe.each(fixtures.witness_cases)("$name (fixture $fixture)", (c) => {
+    it(`witness_quorum@1.0.0 returns ${c.expected.status}${c.expected.code ? ` (${c.expected.code})` : ""}`, () => {
+      const ctx = c.context;
+      const domains = ctx.verified_domains as Record<string, string | null>;
+      const contents = c.attestations.map((a) => utf8Encode(JSON.stringify(a)));
+      const outcome = witnessQuorumVerifier.run({
+        obligationId: ctx.obligation_id,
+        deliverableId: ctx.deliverable_id,
+        check: { check_id: ctx.check_id, verifier: "witness_quorum", verifier_version: "1.0.0", evidence_type: "witness_attestation", config: {} },
+        envelope: { ...envelope, evidence_type: "witness_attestation", verifiers: ["witness_quorum"] },
+        content: contents[0],
+        allowedVerifierIds: [],
+        resolveKey: (keyId, keyVersion) => {
+          const k = keyFor(keyId, keyVersion);
+          return k ? { actor_id: k.actor_id, public_key: k.public_key, revoked_at: k.revoked_at } : null;
+        },
+        executions: ctx.declared_executions.map((d, i) => ({ ...executionBinding(d as ExecutionDescriptor), started_event_id: `evt_${i}`, descriptor: d as ExecutionDescriptor })),
+        termsSkill: ctx.terms_skill as SkillRef | null,
+        obligationEvidenceDigests: ctx.obligation_evidence_digests,
+        evaluatedAt: ctx.at,
+        witnessPolicy: ctx.witness_policy as WitnessPolicy,
+        witnessAttestations: contents,
+        partyIds: ctx.party_ids,
+        verifiedDomainOf: (agentId) => domains[agentId] ?? null,
+      });
+      expect(outcome.status).toBe(c.expected.status);
+      expect(outcome.details.code ?? null).toBe(c.expected.code);
+      const counted = String(outcome.details.counted ?? "");
+      expect(counted === "" ? [] : counted.split(",").map((w) => w.split("@")[0])).toEqual(c.expected.counted);
+    });
+  });
+
+  describe.each(fixtures.conflict_cases)("$name (fixture $fixture)", (c) => {
+    it("lists the conflicts among attestations in effect", () => {
+      const signed = c.attestations as Signed<ExternalAttestationPayload>[];
+      const digests = signed.map((a) => digestOf(a.payload));
+      for (const a of signed) expect(verifyPayload(a, keyFor(a.signature.key_id, a.signature.key_version)!.public_key)).toBe(true);
+      const items = signed.map((a, i) => ({ digest: digests[i], signer: a.payload.verifier_id, issued_at: a.payload.issued_at, expires_at: a.payload.expires_at, refs: a.payload.refs }));
+      const resolution = resolveAttestations(items, c.at);
+      const claims = signed
+        .map((a, i) => ({
+          digest: digests[i],
+          signer: a.payload.verifier_id,
+          subject: `${a.payload.obligation_id}/${a.payload.deliverable_id}/${a.payload.check_id}`,
+          status: a.payload.status,
+          ...(a.payload.execution ? { execution_digest: a.payload.execution.execution_digest } : {}),
+        }))
+        .filter((claim) => inEffect(resolution, claim.digest));
+      const conflicts = findConflicts(claims, disputesInEffect(items, resolution));
+      expect(conflicts.map((x) => ({ kind: x.kind, subject: x.subject, attestations: x.attestation_digests.map((d) => digests.indexOf(d)).sort(), signers: x.signers }))).toEqual(c.expected);
     });
   });
 });

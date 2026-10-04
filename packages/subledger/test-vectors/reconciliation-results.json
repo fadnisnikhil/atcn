@@ -1,0 +1,151 @@
+{
+  "rail_id": "atcn",
+  "rail_url": "https://github.com/fadnisnikhil/atcn",
+  "artefact_id": "atcn-reconciliation-v1",
+  "schema_version": "1.1",
+  "atcn_version": "1.5.0",
+  "method": "in-process run against the local runner's subledger (same rules as the hosted API): examples/local-runner/scripts/reconciliation.ts",
+  "verdicts": {
+    "BLOCK": "the attack does not change the books: refused or absorbed at intake",
+    "REVIEW": "recorded, with an open exception flagging it for a person"
+  },
+  "vectors": [
+    {
+      "vector_id": "atcn-recon-double-charge-replay-001",
+      "artefact_id": "atcn-reconciliation-v1",
+      "attack_class": "double_charge",
+      "expected_verdict": "BLOCK",
+      "result": "PASS",
+      "observed": {
+        "refused_steps": [],
+        "deduplicated_steps": [
+          4
+        ],
+        "exception_kinds": [],
+        "net_cost_minor": {
+          "A": 1000
+        },
+        "closed_net_cost_minor": {
+          "A": 1000
+        },
+        "closures_verify_offline": true
+      },
+      "adapter_notes": ""
+    },
+    {
+      "vector_id": "atcn-recon-double-charge-distinct-001",
+      "artefact_id": "atcn-reconciliation-v1",
+      "attack_class": "double_charge",
+      "expected_verdict": "REVIEW",
+      "result": "PASS",
+      "observed": {
+        "refused_steps": [],
+        "deduplicated_steps": [],
+        "exception_kinds": [
+          "amount_mismatch"
+        ],
+        "net_cost_minor": {
+          "A": 2000
+        },
+        "closed_net_cost_minor": {
+          "A": 2000
+        },
+        "closures_verify_offline": true
+      },
+      "adapter_notes": ""
+    },
+    {
+      "vector_id": "atcn-recon-cross-task-replay-001",
+      "artefact_id": "atcn-reconciliation-v1",
+      "attack_class": "cross_task_replay",
+      "expected_verdict": "BLOCK",
+      "result": "PASS",
+      "observed": {
+        "refused_steps": [
+          6
+        ],
+        "deduplicated_steps": [],
+        "exception_kinds": [
+          "duplicate_event"
+        ],
+        "net_cost_minor": {
+          "A": 1000,
+          "B": 0
+        },
+        "closed_net_cost_minor": {
+          "A": 1000,
+          "B": 0
+        },
+        "closures_verify_offline": true
+      },
+      "adapter_notes": ""
+    },
+    {
+      "vector_id": "atcn-recon-refund-after-close-001",
+      "artefact_id": "atcn-reconciliation-v1",
+      "attack_class": "refund_after_close",
+      "expected_verdict": "REVIEW",
+      "result": "PASS",
+      "observed": {
+        "refused_steps": [],
+        "deduplicated_steps": [],
+        "exception_kinds": [
+          "refund_after_close"
+        ],
+        "net_cost_minor": {
+          "A": 0
+        },
+        "closed_net_cost_minor": {
+          "A": 1000
+        },
+        "closures_verify_offline": true
+      },
+      "adapter_notes": ""
+    },
+    {
+      "vector_id": "atcn-recon-charge-after-cancel-001",
+      "artefact_id": "atcn-reconciliation-v1",
+      "attack_class": "charge_after_cancel",
+      "expected_verdict": "REVIEW",
+      "result": "PASS",
+      "observed": {
+        "refused_steps": [],
+        "deduplicated_steps": [],
+        "exception_kinds": [
+          "charge_after_cancellation",
+          "missing_receipt"
+        ],
+        "net_cost_minor": {
+          "A": 1000
+        },
+        "closed_net_cost_minor": {
+          "A": 1000
+        },
+        "closures_verify_offline": true
+      },
+      "adapter_notes": ""
+    },
+    {
+      "vector_id": "atcn-recon-backdated-estimate-001",
+      "artefact_id": "atcn-reconciliation-v1",
+      "attack_class": "backdated_estimate",
+      "expected_verdict": "REVIEW",
+      "result": "PASS",
+      "observed": {
+        "refused_steps": [],
+        "deduplicated_steps": [],
+        "exception_kinds": [
+          "estimate_after_charge"
+        ],
+        "net_cost_minor": {
+          "A": 1500
+        },
+        "closed_net_cost_minor": {
+          "A": 1500
+        },
+        "closures_verify_offline": true
+      },
+      "adapter_notes": ""
+    }
+  ]
+}

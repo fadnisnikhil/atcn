@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { verifyClosurePackage } from "@atcn/core";
-import { PublicKeyRecordSchema, type PublicKeyRecord } from "@atcn/schema";
+import { verifyClearingVerdict, verifyClosurePackage } from "@atcn/core";
+import { CLEARING_VERDICT_TYPE, PublicKeyRecordSchema, type PublicKeyRecord } from "@atcn/schema";
 import {
   OperatorKeyRecordSchema,
   SUBLEDGER_VERIFIER_VERSION,
@@ -12,7 +12,8 @@ import {
 
 const USAGE = `usage: atcn-verify <document.json> --keys <published-keys.json> [--previous <previous-revision.json>]
                    [--operator-keys <operator-keys.json>] [--require-operator-signature]
-                   [--obligation-package <closure-package.json> ...] [--at <ISO-8601 time>] [--json]
+                   [--obligation-package <closure-package.json> ...] [--trace <trace.json> ...]
+                   [--at <ISO-8601 time>] [--json]
 
 Verifies offline, without contacting the service:
   - ATCN closure packages (obligations): signatures, key validity, event references,
@@ -22,6 +23,9 @@ Verifies offline, without contacting the service:
     provider response signatures, and the version chain.
   - Subledger provider receipts (atcn.subledger.receipt): signature, schema, reversals,
     totals, field disclosure, the revision chain, and expiry.
+  - Clearing verdicts (atcn.clearing.verdict): the service signature and, with --obligation-package, that
+    the package verifies and the verdict states the decision in effect in it. ATCN only publishes a verdict;
+    an escrow rail decides whether to release.
 --keys accepts a JSON array of public key records or the /v1/service/keys response ({"items": [...]}).
 --previous checks the chain link to the prior receipt revision or closure version.
 --operator-keys checks countersignatures made with the operator's own keys
@@ -29,6 +33,11 @@ Verifies offline, without contacting the service:
 --obligation-package (repeatable) cross-checks a task closure's obligation-backed delegations against
   the obligations' closure packages (GET /v1/exports/{obligation_id}): each package must verify, and its
   journal must produce exactly the costs the closure recorded from the clearing network.
+  For a clearing verdict, pass the one package it was read from.
+--trace (repeatable) supplies agent trace files. For a closure package it rechecks agent_trace evidence
+  against the declared runs and recomputes usage_cost results from the terms' pricing; for a subledger
+  receipt or closure it recomputes each recorded usage summary from its trace. Evidence or usage whose
+  trace was not supplied is reported as NOT INSPECTED, which is neither a pass nor a failure.
 --at checks a provider receipt's expires_at against that time instead of now.
 Subledger schema versions supported: ${SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS.join(", ")} (atcn-verify ${SUBLEDGER_VERIFIER_VERSION}).
 Exit code 0 = valid, 1 = invalid, 2 = usage or input error, 3 = unsupported schema version (upgrade atcn-verify).`;
@@ -68,6 +77,7 @@ function main(): number {
         "operator-keys": { type: "string" },
         "require-operator-signature": { type: "boolean" },
         "obligation-package": { type: "string", multiple: true },
+        trace: { type: "string", multiple: true },
         at: { type: "string" },
         json: { type: "boolean" },
         help: { type: "boolean" },
@@ -86,12 +96,22 @@ function main(): number {
     console.error(`--at must be an ISO 8601 time, got ${at}\n\n${USAGE}`);
     return 2;
   }
-  let report: { valid: boolean; unsupported_schema_version?: string; checks: { name: string; ok: boolean; details: string[] }[] };
+  let report: { valid: boolean; unsupported_schema_version?: string; checks: { name: string; ok: boolean; details: string[]; state?: "not_inspected" }[] };
   let label: string;
   try {
     const doc = readJson(parsed.positionals[0]);
     const trustedKeys = loadKeys(parsed.values.keys);
-    if (isSubledgerDocument(doc)) {
+    const traces = parsed.values.trace?.map((path) => new Uint8Array(readFileSync(path)));
+    const documentType = (doc as { payload?: { document_type?: unknown } } | null)?.payload?.document_type;
+    if (documentType === CLEARING_VERDICT_TYPE) {
+      const packages = parsed.values["obligation-package"]?.map(readJson) ?? [];
+      if (packages.length > 1) {
+        console.error(`a clearing verdict is checked against one --obligation-package, got ${packages.length}\n\n${USAGE}`);
+        return 2;
+      }
+      report = verifyClearingVerdict(doc, { trustedKeys, closurePackage: packages[0] });
+      label = "clearing verdict";
+    } else if (isSubledgerDocument(doc)) {
       const previous = parsed.values.previous ? readJson(parsed.values.previous) : undefined;
       const operatorKeysPath = parsed.values["operator-keys"];
       const operatorKeys = operatorKeysPath ? loadOperatorKeys(operatorKeysPath) : undefined;
@@ -102,12 +122,13 @@ function main(): number {
         operatorKeys,
         requireOperatorSignature: parsed.values["require-operator-signature"],
         obligationPackages,
+        traces,
         at: at === undefined ? undefined : new Date(at).toISOString(),
       });
       report = result;
       label = result.document_type === "atcn.subledger.receipt" ? "provider receipt" : "task closure";
     } else {
-      report = verifyClosurePackage(doc, { trustedKeys });
+      report = verifyClosurePackage(doc, { trustedKeys, traces });
       label = "closure package";
     }
   } catch (error) {
@@ -120,7 +141,8 @@ function main(): number {
     console.error(`UNSUPPORTED  ${report.checks[0].details[0]}`);
   } else {
     for (const check of report.checks) {
-      console.log(`${check.ok ? "PASS" : "FAIL"}  ${check.name}`);
+      const status = !check.ok ? "FAIL" : check.state === "not_inspected" ? "NOT INSPECTED" : "PASS";
+      console.log(`${status}  ${check.name}`);
       for (const detail of check.details) console.log(`      ${detail}`);
     }
     console.log(report.valid ? `\n${label} is VALID` : `\n${label} is INVALID`);

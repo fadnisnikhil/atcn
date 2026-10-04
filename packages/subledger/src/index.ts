@@ -8,3 +8,8 @@ export * from "./response.js";
 export * from "./verify.js";
 export * from "./bridge.js";
 export * from "./matching.js";
+export * from "./usage.js";
+export * from "./expectations.js";
+export * from "./importing.js";
+export * from "./outcome.js";
+export * from "./rails.js";

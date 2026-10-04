@@ -1,0 +1,1114 @@
+{
+  "description": "A clearing verdict and the closure package it was read from, made by the TypeScript local runner. Both SDKs verify it.",
+  "trusted_keys": [
+    {
+      "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+      "key_version": 1,
+      "actor_id": "svc_atcn",
+      "algorithm": "Ed25519",
+      "public_key": "VBmSWszODhQnCgfF1EDKjcnD2rSCfHBuGzQji_irjz0",
+      "valid_from": "2026-10-04T14:28:11.775Z",
+      "revoked_at": null
+    }
+  ],
+  "verdict": {
+    "payload": {
+      "document_type": "atcn.clearing.verdict",
+      "verdict_version": "1.0",
+      "issued_at": "2026-10-04T14:28:11.827Z",
+      "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+      "decision": {
+        "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+        "decision_digest": "sha256:a6beb96aab6a12e1b9f2d3fb681bcd354be9652e4b5d35375efde233a6debef7",
+        "decided_at": "2026-10-04T14:28:11.814Z",
+        "outcome": "accepted",
+        "currency": "USD",
+        "accepted_amount_minor": 10000,
+        "rejected_amount_minor": 0,
+        "disputed_amount_minor": 0,
+        "pending_amount_minor": 0
+      },
+      "final": true,
+      "escrow": {
+        "rail": "a2a-se",
+        "escrow_ref": "esc-1"
+      },
+      "package_digest": "sha256:b723f0462e74a020ebd27d36116dc1abc478cd6d0261771e5926a8d4fa4c23e2",
+      "stance": "record_only"
+    },
+    "signature": {
+      "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+      "key_version": 1,
+      "algorithm": "Ed25519",
+      "value": "0PvwD2bFpzF4AcFI746z4ur03hjdHpsAMQorqxz7m2XryvmT4Ad4-Ia16ZcTB5utPFNCZfsCmNAi_cerFHeKCw"
+    }
+  },
+  "closure_package": {
+    "payload": {
+      "package_version": "1.0",
+      "generated_at": "2026-10-04T14:28:11.825Z",
+      "root_obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+      "requested_obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+      "obligations": [
+        {
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "parent_obligation_id": null,
+          "redacted": false,
+          "effective_terms": {
+            "schema_version": "1.0",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "terms_version": 1,
+            "parent_obligation_id": null,
+            "principal_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+            "payer_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+            "issuer_agent_id": "agt_01M43N1CW295EBZFYT1PTSJEZR",
+            "counterparty_agent_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "payee_selection": null,
+            "scope": {
+              "task_type": "code_change",
+              "description": "Fix the add() bug and cover negative numbers"
+            },
+            "currency": "USD",
+            "max_amount_minor": 10000,
+            "deliverables": [
+              {
+                "deliverable_id": "work",
+                "description": "Fix the add() bug and cover negative numbers",
+                "amount_minor": 10000,
+                "required_checks": [
+                  "unit_tests",
+                  "lint",
+                  "patch"
+                ]
+              }
+            ],
+            "acceptance_policy": {
+              "policy_id": "code-change-checks",
+              "policy_version": "1.0.0",
+              "policy_digest": "sha256:f52423d1263d2f536ca778be172b962241fd4fece35130225826e99e0112516f"
+            },
+            "deadline": "2026-10-11T14:28:11.778Z",
+            "offer_expires_at": "2026-10-05T14:28:11.778Z",
+            "allow_subdelegation": false,
+            "subdelegation_limits": null,
+            "dispute_reviewer_id": null,
+            "verifier_agent_ids": [],
+            "issued_at": "2026-10-04T14:28:11.778Z"
+          },
+          "effective_terms_digest": "sha256:3bb393631e8bae924ea7fdbdf9655c0581c008eaa533ebe4a137b0ca50ce5292",
+          "state": "cleared"
+        }
+      ],
+      "events": [
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CW413D7WJBDP683DCFV",
+            "event_type": "obligation.offered",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW295EBZFYT1PTSJEZR",
+            "actor_platform_id": "plt_01M43N1CW2NBBJF6ZZZXNCD2RG",
+            "event_time": "2026-10-04T14:28:11.780Z",
+            "causation_ids": [],
+            "data": {
+              "terms": {
+                "schema_version": "1.0",
+                "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+                "terms_version": 1,
+                "parent_obligation_id": null,
+                "principal_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+                "payer_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+                "issuer_agent_id": "agt_01M43N1CW295EBZFYT1PTSJEZR",
+                "counterparty_agent_id": "agt_01M43N1CW2F634JADPDHM94262",
+                "payee_selection": null,
+                "scope": {
+                  "task_type": "code_change",
+                  "description": "Fix the add() bug and cover negative numbers"
+                },
+                "currency": "USD",
+                "max_amount_minor": 10000,
+                "deliverables": [
+                  {
+                    "deliverable_id": "work",
+                    "description": "Fix the add() bug and cover negative numbers",
+                    "amount_minor": 10000,
+                    "required_checks": [
+                      "unit_tests",
+                      "lint",
+                      "patch"
+                    ]
+                  }
+                ],
+                "acceptance_policy": {
+                  "policy_id": "code-change-checks",
+                  "policy_version": "1.0.0",
+                  "policy_digest": "sha256:f52423d1263d2f536ca778be172b962241fd4fece35130225826e99e0112516f"
+                },
+                "deadline": "2026-10-11T14:28:11.778Z",
+                "offer_expires_at": "2026-10-05T14:28:11.778Z",
+                "allow_subdelegation": false,
+                "subdelegation_limits": null,
+                "dispute_reviewer_id": null,
+                "verifier_agent_ids": [],
+                "issued_at": "2026-10-04T14:28:11.778Z"
+              },
+              "terms_digest": "sha256:3bb393631e8bae924ea7fdbdf9655c0581c008eaa533ebe4a137b0ca50ce5292"
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW2KYD8XV2NBXZXF4DG",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "su9IH7etCzgTFg6f1udymYrbzWZCJiGEHIi7DRXOS8lbfYoWUzHa3X7JGzcq52QW9QVW23iSv7i4FEvWaeSEAQ"
+          },
+          "payload_hash": "sha256:a9b72463b801ad6decc7920ee6b0a83a5097fac6d4f4fe216aa53db9b4c2b7b8",
+          "received_at": "2026-10-04T14:28:11.789Z",
+          "sequence": 1
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CWE1PXFM4PDKG8NGVR9",
+            "event_type": "obligation.accepted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "actor_platform_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+            "event_time": "2026-10-04T14:28:11.790Z",
+            "causation_ids": [],
+            "data": {
+              "terms_version": 1,
+              "terms_digest": "sha256:3bb393631e8bae924ea7fdbdf9655c0581c008eaa533ebe4a137b0ca50ce5292",
+              "policy_id": "code-change-checks",
+              "policy_version": "1.0.0",
+              "counterparty_agent_id": "agt_01M43N1CW2F634JADPDHM94262"
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "qdACQkm2UNOmSASGV-Ocmj9-4XGlyku6M869VTo8nQcol351LVBDIyXkDma-KYMfLKqKKzeUJ24lPpxUfsqSBA"
+          },
+          "payload_hash": "sha256:b5e9e1a41fa2220b91b0d5428bebba0c2561358e6bff85257620919305a4ad0b",
+          "received_at": "2026-10-04T14:28:11.794Z",
+          "sequence": 2
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CWKW4W1JVQGC6VHA3BE",
+            "event_type": "journal.posted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.795Z",
+            "causation_ids": [
+              "evt_01M43N1CWE1PXFM4PDKG8NGVR9"
+            ],
+            "data": {
+              "batch_id": "pbt_01M43N1CWKASJN5NHSR5D12H1Z",
+              "entry_type": "contingent",
+              "reverses_batch_id": null,
+              "decision_id": null,
+              "totals": {
+                "USD": 10000
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "Tqcd7U73lRic5Ci9mgSH_faw84S9zOPB4iuY8oTbUumwznsJxi7PYYZ0EXFzWBDGeHL7MBfuFaht43jGC5F6Aw"
+          },
+          "payload_hash": "sha256:8a5f7393b1fb879d3ef1ec1e387d9066b49abdd2f3e8e9b056b3b0f2fb47798b",
+          "received_at": "2026-10-04T14:28:11.796Z",
+          "sequence": 3
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CWMGA64EKNHA4JT9G41",
+            "event_type": "obligation.started",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "actor_platform_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+            "event_time": "2026-10-04T14:28:11.796Z",
+            "causation_ids": [],
+            "data": {}
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "1vlX8te7-WdKQiSmyVNm13hfTR6T0iI21KHckpDIHjn94DX9sWEIThrWw8agz_xzx35jggFtjCJOhNF0L0pLCg"
+          },
+          "payload_hash": "sha256:683f84a25e2f2663e201fdfbf1bbdf6ba41e4b3c3d8557305f9485c896ec03e5",
+          "received_at": "2026-10-04T14:28:11.799Z",
+          "sequence": 4
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CWQG6RHY8HV3ARCZXQF",
+            "event_type": "evidence.submitted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "actor_platform_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+            "event_time": "2026-10-04T14:28:11.799Z",
+            "causation_ids": [],
+            "data": {
+              "envelope": {
+                "evidence_id": "evd_01M43N1CWQ4G2X72JXVSKAG008",
+                "evidence_type": "test_report",
+                "producer_id": "agt_01M43N1CW2F634JADPDHM94262",
+                "created_at": "2026-10-04T14:28:11.799Z",
+                "content_digest": "sha256:ce78755626de088afdc2c2558f2da534c2bdd8d3e994d17aa57e6a6c5df0f432",
+                "uri": "atcn-blob://sha256/ce78755626de088afdc2c2558f2da534c2bdd8d3e994d17aa57e6a6c5df0f432",
+                "retrieval_method": "atcn-blob",
+                "media_type": "application/xml",
+                "access_policy": {
+                  "visible_to": [
+                    "issuer",
+                    "counterparty",
+                    "reviewer",
+                    "verifier"
+                  ]
+                },
+                "verifiers": [
+                  "junit_tests"
+                ],
+                "deliverable_ids": [
+                  "work"
+                ]
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "nMr5HF4w_yZC1Ude3yPqvkAqG6wPwgImjOsskMvkTa2lW2CXO8U4JF0OaGo6phh1K0e2Fb67x2qFa1nBvk74DA"
+          },
+          "payload_hash": "sha256:13ae434e150c78daf809a23014c892bbe23583c6444db5611866c7406c34ab1c",
+          "received_at": "2026-10-04T14:28:11.803Z",
+          "sequence": 5
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CWV0DDYQHC1W2Z0GTSH",
+            "event_type": "evidence.submitted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "actor_platform_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+            "event_time": "2026-10-04T14:28:11.803Z",
+            "causation_ids": [],
+            "data": {
+              "envelope": {
+                "evidence_id": "evd_01M43N1CWVQ4TE69HQ8AEBMMXR",
+                "evidence_type": "lint_report",
+                "producer_id": "agt_01M43N1CW2F634JADPDHM94262",
+                "created_at": "2026-10-04T14:28:11.803Z",
+                "content_digest": "sha256:156eb6761b91e1d6c282ad34b84ee20686b03c87355ca2df837ce829d1abeca2",
+                "uri": "atcn-blob://sha256/156eb6761b91e1d6c282ad34b84ee20686b03c87355ca2df837ce829d1abeca2",
+                "retrieval_method": "atcn-blob",
+                "media_type": "application/json",
+                "access_policy": {
+                  "visible_to": [
+                    "issuer",
+                    "counterparty",
+                    "reviewer",
+                    "verifier"
+                  ]
+                },
+                "verifiers": [
+                  "eslint_lint"
+                ],
+                "deliverable_ids": [
+                  "work"
+                ]
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CaSmN4PDyhl6HA5FGGf40WQKp_j1pMxsLVhDNSif185-qFNn695EadBslBmrkhJ1w-Q7xSwwOXRKnqrVWGhaAA"
+          },
+          "payload_hash": "sha256:b72fc28f149c9d04d3c8445184c31fe724309bffb34b242c41a301c0557ddfdc",
+          "received_at": "2026-10-04T14:28:11.807Z",
+          "sequence": 6
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CWZK1QAY3TBA1XT0ER0",
+            "event_type": "evidence.submitted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "actor_platform_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+            "event_time": "2026-10-04T14:28:11.807Z",
+            "causation_ids": [],
+            "data": {
+              "envelope": {
+                "evidence_id": "evd_01M43N1CWZZ1M7G5FREAWZMF5P",
+                "evidence_type": "patch_ref",
+                "producer_id": "agt_01M43N1CW2F634JADPDHM94262",
+                "created_at": "2026-10-04T14:28:11.807Z",
+                "content_digest": "sha256:73a2b5812aee0eaf7bcfa356a4c7129efe1088dd779abcf1ea1fb4ed6c6992bc",
+                "uri": "atcn-blob://sha256/73a2b5812aee0eaf7bcfa356a4c7129efe1088dd779abcf1ea1fb4ed6c6992bc",
+                "retrieval_method": "atcn-blob",
+                "media_type": "text/x-diff",
+                "access_policy": {
+                  "visible_to": [
+                    "issuer",
+                    "counterparty",
+                    "reviewer",
+                    "verifier"
+                  ]
+                },
+                "verifiers": [
+                  "patch_digest"
+                ],
+                "deliverable_ids": [
+                  "work"
+                ]
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "XyUG231XpwujM_syw1IFjJ6cKaEi4i_TyySxXEpBxyHlyOACrLr1nyiWYEnk1pGBcB5IEFqSgE8TCcDf9OePDQ"
+          },
+          "payload_hash": "sha256:e72fe1cf167b9e70e877f518ce04c5b0382c421063b9937d7f8d1ed99e9d0217",
+          "received_at": "2026-10-04T14:28:11.809Z",
+          "sequence": 7
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CX19ZBAB7F9P3ABXY1V",
+            "event_type": "completion.proposed",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+            "actor_platform_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+            "event_time": "2026-10-04T14:28:11.809Z",
+            "causation_ids": [],
+            "data": {
+              "note": "fix delivered with tests"
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "I8MVdeNTr3jSg8vjit-IM5giV-eIrqF7x4_x7C-q292GHZ3HM6Z2xc78CFlhHP52LL_FIJpfSt5wkUaDp7A5Dw"
+          },
+          "payload_hash": "sha256:21ef42889c8df712f002750df1beb88d508ed1a711cdf7771b35568f206ecd49",
+          "received_at": "2026-10-04T14:28:11.811Z",
+          "sequence": 8
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CX7CV6QB9G6GA0VYPZK",
+            "event_type": "completion.accepted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.815Z",
+            "causation_ids": [
+              "evt_01M43N1CWE1PXFM4PDKG8NGVR9",
+              "evt_01M43N1CWQG6RHY8HV3ARCZXQF",
+              "evt_01M43N1CWV0DDYQHC1W2Z0GTSH",
+              "evt_01M43N1CWZK1QAY3TBA1XT0ER0",
+              "evt_01M43N1CX19ZBAB7F9P3ABXY1V"
+            ],
+            "data": {
+              "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+              "decision_digest": "sha256:a6beb96aab6a12e1b9f2d3fb681bcd354be9652e4b5d35375efde233a6debef7",
+              "outcome": "accepted",
+              "accepted_amount_minor": 10000,
+              "policy_version": "1.0.0",
+              "decision_maker": {
+                "type": "automated",
+                "id": "atcn-clearing-engine@1.1.0"
+              },
+              "supersedes_decision_id": null
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "wemD8l6IJElBCIZUag3eFemFyBNEPfdOzZyeZZnPoeXHJUdEIgf1qgwXxzanG6V0A7G-8eYaTuAWM41GdLU2BA"
+          },
+          "payload_hash": "sha256:c23c8be61d759bc56693130e434b56073895655a909ce4f3a015547e1f92e6b7",
+          "received_at": "2026-10-04T14:28:11.815Z",
+          "sequence": 9
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CX86EAQCDEAWM6X84VX",
+            "event_type": "obligation.cleared",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.816Z",
+            "causation_ids": [],
+            "data": {
+              "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+              "outcome": "accepted",
+              "accepted_amount_minor": 10000
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "heHDSK9WKmJ6pFkHafJh9UR1ctY3fyeFqofTbVExI3bFIYsqRDFfI7R91DXZrt1vfEwVNXvMzEfYITPylHFcDA"
+          },
+          "payload_hash": "sha256:f8ba059bb93978214a38e4eb2062ea13067db0efa5426978c043d50db88d4a06",
+          "received_at": "2026-10-04T14:28:11.816Z",
+          "sequence": 10
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CX805GER10Y34NETET8",
+            "event_type": "journal.reversed",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.816Z",
+            "causation_ids": [
+              "evt_01M43N1CX86EAQCDEAWM6X84VX"
+            ],
+            "data": {
+              "batch_id": "pbt_01M43N1CX8XMRMK2QGV89GMWBC",
+              "entry_type": "reversal",
+              "reverses_batch_id": "pbt_01M43N1CWKASJN5NHSR5D12H1Z",
+              "decision_id": null,
+              "totals": {
+                "USD": 10000
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "otaNn-S3ctqHer8QqU-xJozwJ74wWZG84dsV86WAUr1nngnuDVRUsFUoTSh2xN3eOAIctsjNNHZcw_wSzTt5Cw"
+          },
+          "payload_hash": "sha256:511986ad70820a48329ee8639ad95c670ab8bf956cc6ea5ad8aa39b413d28088",
+          "received_at": "2026-10-04T14:28:11.817Z",
+          "sequence": 11
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CX9F9V3JNN7DVCPXGYN",
+            "event_type": "journal.posted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.817Z",
+            "causation_ids": [
+              "evt_01M43N1CX86EAQCDEAWM6X84VX"
+            ],
+            "data": {
+              "batch_id": "pbt_01M43N1CX9NZNEXFQAY2F4EH20",
+              "entry_type": "clearing",
+              "reverses_batch_id": null,
+              "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+              "totals": {
+                "USD": 10000
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "o5FRjd8-8pTFXN9fRrKA9GISztir5EtFXHEK6kq49nivGVQpFQLiBmTC75AN_2ELEQv-bilhgYcJAQ01itN6Dw"
+          },
+          "payload_hash": "sha256:4c7ec861839678de1038a6e8541138074a3bc0ae63bfe9ae643fdeaa46d5c0fe",
+          "received_at": "2026-10-04T14:28:11.817Z",
+          "sequence": 12
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CXC8T1DS77KMP673BTV",
+            "event_type": "settlement.reported",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.820Z",
+            "causation_ids": [],
+            "data": {
+              "settlement_event_id": "ste_01M43N1CXCKDD496VJKAHQWSGB",
+              "instruction_id": "sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+              "provider": "sandbox",
+              "provider_reference": "sbx_tr_sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+              "provider_status": "paid",
+              "normalized_status": "settled",
+              "amount_minor": 9000,
+              "currency": "USD"
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "lEorDSgm2CbXfwztRD_3WAgpT0tmlT-iSrVSoH3Cr-Zfn6zQ5PsdDHc7mccegbowuMWkvLCrhPl8pglm4-4oCQ"
+          },
+          "payload_hash": "sha256:2c7ff4e4f2cf9eeea42385d8169e8ed5f1613d6f3424d35a647d7841d63f6e2c",
+          "received_at": "2026-10-04T14:28:11.821Z",
+          "sequence": 13
+        },
+        {
+          "payload": {
+            "schema_version": "1.0",
+            "event_id": "evt_01M43N1CXDR6Q1F2B9V8F88P89",
+            "event_type": "journal.posted",
+            "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+            "actor_id": "svc_atcn",
+            "actor_platform_id": "svc_atcn",
+            "event_time": "2026-10-04T14:28:11.821Z",
+            "causation_ids": [
+              "evt_01M43N1CXC8T1DS77KMP673BTV"
+            ],
+            "data": {
+              "batch_id": "pbt_01M43N1CXDZB5NCWC59F1PRFZ0",
+              "entry_type": "settlement",
+              "reverses_batch_id": null,
+              "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+              "totals": {
+                "USD": 9000
+              }
+            }
+          },
+          "signature": {
+            "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "NqroXfrN_Bq4OFK_CDvFy9uz743NlDiXZbon3bJuNVPRv7U7NxqKmtrxOgnCfe3lDlfmeTlkqZ24FaklzJZ8Aw"
+          },
+          "payload_hash": "sha256:f9fb3785a5380aee2efa65a8d2e7a79bd51da859feff9d2854c04e511e343b9b",
+          "received_at": "2026-10-04T14:28:11.821Z",
+          "sequence": 14
+        }
+      ],
+      "public_keys": [
+        {
+          "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+          "key_version": 1,
+          "actor_id": "svc_atcn",
+          "algorithm": "Ed25519",
+          "public_key": "VBmSWszODhQnCgfF1EDKjcnD2rSCfHBuGzQji_irjz0",
+          "valid_from": "2026-10-04T14:28:11.775Z",
+          "revoked_at": null
+        },
+        {
+          "key_id": "key_01M43N1CW2KYD8XV2NBXZXF4DG",
+          "key_version": 1,
+          "actor_id": "agt_01M43N1CW295EBZFYT1PTSJEZR",
+          "algorithm": "Ed25519",
+          "public_key": "luLwofzYmelqjjcXXYy9fK9WnTVgeJIuv3rgYXy0WoU",
+          "valid_from": "2026-10-04T14:28:11.778Z",
+          "revoked_at": null
+        },
+        {
+          "key_id": "key_01M43N1CW29RWEC198SYRWQ9F5",
+          "key_version": 1,
+          "actor_id": "agt_01M43N1CW2F634JADPDHM94262",
+          "algorithm": "Ed25519",
+          "public_key": "hLoLnq4sp-BY9IWioGQTBTpm4rUMrDvtgimb6YAn8lg",
+          "valid_from": "2026-10-04T14:28:11.778Z",
+          "revoked_at": null
+        }
+      ],
+      "policies": [
+        {
+          "schema_version": "1.0",
+          "policy_id": "code-change-checks",
+          "policy_version": "1.0.0",
+          "task_type": "code_change",
+          "description": "Code change accepted when the patch is a valid diff, all unit tests pass, and lint reports no errors.",
+          "evidence_admissibility": {
+            "allowed_producers": [
+              "counterparty",
+              "verifier"
+            ],
+            "require_digest_match": true
+          },
+          "required_evidence": [
+            "patch_ref"
+          ],
+          "checks": [
+            {
+              "check_id": "unit_tests",
+              "verifier": "junit_tests",
+              "verifier_version": "1.0.0",
+              "evidence_type": "test_report",
+              "config": {
+                "min_tests": 1,
+                "min_pass_rate_bps": 10000
+              }
+            },
+            {
+              "check_id": "lint",
+              "verifier": "eslint_lint",
+              "verifier_version": "1.0.0",
+              "evidence_type": "lint_report",
+              "config": {
+                "max_errors": 0,
+                "max_warnings": -1
+              }
+            },
+            {
+              "check_id": "patch",
+              "verifier": "patch_digest",
+              "verifier_version": "1.0.0",
+              "evidence_type": "patch_ref",
+              "config": {
+                "min_files_changed": 1
+              }
+            },
+            {
+              "check_id": "review",
+              "verifier": "external_attestation",
+              "verifier_version": "1.0.0",
+              "evidence_type": "verifier_attestation",
+              "config": {}
+            }
+          ],
+          "thresholds": {
+            "partial_acceptance": true,
+            "failed_portion_outcome": "rejected"
+          },
+          "verifier_unavailable_outcome": "insufficient_evidence",
+          "probabilistic_routing": "human_review",
+          "timeouts": {
+            "evaluation_window_seconds": 604800
+          },
+          "dispute": {
+            "window_seconds": 604800,
+            "review_window_seconds": 1209600,
+            "default_outcome": "uphold"
+          },
+          "allocation": {
+            "platform_fee_bps": 1000
+          },
+          "rounding": "largest_remainder"
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "evd_01M43N1CWQ4G2X72JXVSKAG008",
+          "evidence_type": "test_report",
+          "producer_id": "agt_01M43N1CW2F634JADPDHM94262",
+          "created_at": "2026-10-04T14:28:11.799Z",
+          "content_digest": "sha256:ce78755626de088afdc2c2558f2da534c2bdd8d3e994d17aa57e6a6c5df0f432",
+          "uri": "atcn-blob://sha256/ce78755626de088afdc2c2558f2da534c2bdd8d3e994d17aa57e6a6c5df0f432",
+          "retrieval_method": "atcn-blob",
+          "media_type": "application/xml",
+          "access_policy": {
+            "visible_to": [
+              "issuer",
+              "counterparty",
+              "reviewer",
+              "verifier"
+            ]
+          },
+          "verifiers": [
+            "junit_tests"
+          ],
+          "deliverable_ids": [
+            "work"
+          ]
+        },
+        {
+          "evidence_id": "evd_01M43N1CWVQ4TE69HQ8AEBMMXR",
+          "evidence_type": "lint_report",
+          "producer_id": "agt_01M43N1CW2F634JADPDHM94262",
+          "created_at": "2026-10-04T14:28:11.803Z",
+          "content_digest": "sha256:156eb6761b91e1d6c282ad34b84ee20686b03c87355ca2df837ce829d1abeca2",
+          "uri": "atcn-blob://sha256/156eb6761b91e1d6c282ad34b84ee20686b03c87355ca2df837ce829d1abeca2",
+          "retrieval_method": "atcn-blob",
+          "media_type": "application/json",
+          "access_policy": {
+            "visible_to": [
+              "issuer",
+              "counterparty",
+              "reviewer",
+              "verifier"
+            ]
+          },
+          "verifiers": [
+            "eslint_lint"
+          ],
+          "deliverable_ids": [
+            "work"
+          ]
+        },
+        {
+          "evidence_id": "evd_01M43N1CWZZ1M7G5FREAWZMF5P",
+          "evidence_type": "patch_ref",
+          "producer_id": "agt_01M43N1CW2F634JADPDHM94262",
+          "created_at": "2026-10-04T14:28:11.807Z",
+          "content_digest": "sha256:73a2b5812aee0eaf7bcfa356a4c7129efe1088dd779abcf1ea1fb4ed6c6992bc",
+          "uri": "atcn-blob://sha256/73a2b5812aee0eaf7bcfa356a4c7129efe1088dd779abcf1ea1fb4ed6c6992bc",
+          "retrieval_method": "atcn-blob",
+          "media_type": "text/x-diff",
+          "access_policy": {
+            "visible_to": [
+              "issuer",
+              "counterparty",
+              "reviewer",
+              "verifier"
+            ]
+          },
+          "verifiers": [
+            "patch_digest"
+          ],
+          "deliverable_ids": [
+            "work"
+          ]
+        }
+      ],
+      "verifier_results": [
+        {
+          "result_id": "vrs_01M43N1CX4ADKFSG8BN00KQHY0",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "check_id": "unit_tests",
+          "deliverable_id": "work",
+          "verifier_name": "junit_tests",
+          "verifier_version": "1.0.0",
+          "config_digest": "sha256:a5e9d3a856875dce1c7e0436d9f70d24613f6e08dc23bbd696274502fa48bacb",
+          "evidence_ids": [
+            "evd_01M43N1CWQ4G2X72JXVSKAG008"
+          ],
+          "evidence_digests": [
+            "sha256:ce78755626de088afdc2c2558f2da534c2bdd8d3e994d17aa57e6a6c5df0f432"
+          ],
+          "executed_at": "2026-10-04T14:28:11.812Z",
+          "kind": "deterministic",
+          "status": "pass",
+          "details": {
+            "tests": 2,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "executed": 2,
+            "passed": 2,
+            "pass_rate_bps": 10000,
+            "min_tests": 1,
+            "min_pass_rate_bps": 10000
+          },
+          "model": null
+        },
+        {
+          "result_id": "vrs_01M43N1CX6GJH2581A3RMMRZHN",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "check_id": "lint",
+          "deliverable_id": "work",
+          "verifier_name": "eslint_lint",
+          "verifier_version": "1.0.0",
+          "config_digest": "sha256:868794e121dc35e2c86c2a25879c3e699729f1838ee672685513d3d84e1a0a1f",
+          "evidence_ids": [
+            "evd_01M43N1CWVQ4TE69HQ8AEBMMXR"
+          ],
+          "evidence_digests": [
+            "sha256:156eb6761b91e1d6c282ad34b84ee20686b03c87355ca2df837ce829d1abeca2"
+          ],
+          "executed_at": "2026-10-04T14:28:11.814Z",
+          "kind": "deterministic",
+          "status": "pass",
+          "details": {
+            "files": 1,
+            "errors": 0,
+            "warnings": 0,
+            "max_errors": 0,
+            "max_warnings": -1
+          },
+          "model": null
+        },
+        {
+          "result_id": "vrs_01M43N1CX6KMKQFMKMDRC7WGZY",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "check_id": "patch",
+          "deliverable_id": "work",
+          "verifier_name": "patch_digest",
+          "verifier_version": "1.0.0",
+          "config_digest": "sha256:0ef2ad0c8f20b96bfdf220963f2af6732a95e1cbb1340b967f503a75c05a2a14",
+          "evidence_ids": [
+            "evd_01M43N1CWZZ1M7G5FREAWZMF5P"
+          ],
+          "evidence_digests": [
+            "sha256:73a2b5812aee0eaf7bcfa356a4c7129efe1088dd779abcf1ea1fb4ed6c6992bc"
+          ],
+          "executed_at": "2026-10-04T14:28:11.814Z",
+          "kind": "deterministic",
+          "status": "pass",
+          "details": {
+            "files_changed": 1,
+            "additions": 1,
+            "deletions": 1,
+            "min_files_changed": 1
+          },
+          "model": null
+        }
+      ],
+      "decisions": [
+        {
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "terms_version": 1,
+          "terms_digest": "sha256:3bb393631e8bae924ea7fdbdf9655c0581c008eaa533ebe4a137b0ca50ce5292",
+          "policy": {
+            "policy_id": "code-change-checks",
+            "policy_version": "1.0.0",
+            "policy_digest": "sha256:f52423d1263d2f536ca778be172b962241fd4fece35130225826e99e0112516f"
+          },
+          "outcome": "accepted",
+          "currency": "USD",
+          "accepted_amount_minor": 10000,
+          "rejected_amount_minor": 0,
+          "disputed_amount_minor": 0,
+          "pending_amount_minor": 0,
+          "deliverable_outcomes": [
+            {
+              "deliverable_id": "work",
+              "amount_minor": 10000,
+              "outcome": "accepted",
+              "reasons": [
+                {
+                  "code": "passed",
+                  "check_id": "unit_tests"
+                },
+                {
+                  "code": "passed",
+                  "check_id": "lint"
+                },
+                {
+                  "code": "passed",
+                  "check_id": "patch"
+                }
+              ]
+            }
+          ],
+          "input_event_ids": [
+            "evt_01M43N1CWE1PXFM4PDKG8NGVR9",
+            "evt_01M43N1CWQG6RHY8HV3ARCZXQF",
+            "evt_01M43N1CWV0DDYQHC1W2Z0GTSH",
+            "evt_01M43N1CWZK1QAY3TBA1XT0ER0",
+            "evt_01M43N1CX19ZBAB7F9P3ABXY1V"
+          ],
+          "evidence_digests": [
+            "sha256:156eb6761b91e1d6c282ad34b84ee20686b03c87355ca2df837ce829d1abeca2",
+            "sha256:73a2b5812aee0eaf7bcfa356a4c7129efe1088dd779abcf1ea1fb4ed6c6992bc",
+            "sha256:ce78755626de088afdc2c2558f2da534c2bdd8d3e994d17aa57e6a6c5df0f432"
+          ],
+          "verifier_output_digests": [
+            "sha256:25bb054dc3ed0cf8b4bfa6542124f7346b07c9f9e1b365a38afc6bca9f80d627",
+            "sha256:d2503fa0b79a2c4ecc1b2505bbb35e65229d6137f565cbc80650b98e8bb3edbf",
+            "sha256:faa821be47fb55b45076d60c7a675f7ce4d9dc6b1ed5542a2a5283ed6788a42b"
+          ],
+          "decision_maker": {
+            "type": "automated",
+            "id": "atcn-clearing-engine@1.1.0"
+          },
+          "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+          "decision_digest": "sha256:a6beb96aab6a12e1b9f2d3fb681bcd354be9652e4b5d35375efde233a6debef7",
+          "decided_at": "2026-10-04T14:28:11.814Z",
+          "supersedes_decision_id": null,
+          "input_cutoff_sequence": 8
+        }
+      ],
+      "posting_batches": [
+        {
+          "batch_id": "pbt_01M43N1CWKASJN5NHSR5D12H1Z",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "entry_type": "contingent",
+          "decision_id": null,
+          "settlement_event_id": null,
+          "reverses_batch_id": null,
+          "policy_version": "1.0.0",
+          "source_event_ids": [
+            "evt_01M43N1CWE1PXFM4PDKG8NGVR9"
+          ],
+          "rounding": null,
+          "lines": [
+            {
+              "account_type": "contingent_expense",
+              "party_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+              "allocation_role": "contingent",
+              "currency": "USD",
+              "debit_minor": 10000,
+              "credit_minor": 0
+            },
+            {
+              "account_type": "contingent_payable",
+              "party_id": "agt_01M43N1CW2F634JADPDHM94262",
+              "allocation_role": "contingent",
+              "currency": "USD",
+              "debit_minor": 0,
+              "credit_minor": 10000
+            }
+          ],
+          "posted_at": "2026-10-04T14:28:11.795Z"
+        },
+        {
+          "batch_id": "pbt_01M43N1CX8XMRMK2QGV89GMWBC",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "entry_type": "reversal",
+          "decision_id": null,
+          "settlement_event_id": null,
+          "reverses_batch_id": "pbt_01M43N1CWKASJN5NHSR5D12H1Z",
+          "policy_version": "1.0.0",
+          "source_event_ids": [
+            "evt_01M43N1CX86EAQCDEAWM6X84VX"
+          ],
+          "rounding": null,
+          "lines": [
+            {
+              "account_type": "contingent_expense",
+              "party_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+              "allocation_role": "contingent",
+              "currency": "USD",
+              "debit_minor": 0,
+              "credit_minor": 10000
+            },
+            {
+              "account_type": "contingent_payable",
+              "party_id": "agt_01M43N1CW2F634JADPDHM94262",
+              "allocation_role": "contingent",
+              "currency": "USD",
+              "debit_minor": 10000,
+              "credit_minor": 0
+            }
+          ],
+          "posted_at": "2026-10-04T14:28:11.816Z"
+        },
+        {
+          "batch_id": "pbt_01M43N1CX9NZNEXFQAY2F4EH20",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "entry_type": "clearing",
+          "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+          "settlement_event_id": null,
+          "reverses_batch_id": null,
+          "policy_version": "1.0.0",
+          "source_event_ids": [
+            "evt_01M43N1CX86EAQCDEAWM6X84VX"
+          ],
+          "rounding": {
+            "method": "largest_remainder",
+            "detail": "total=10000; platform_fee=1000+0(rem 0/10000); payee_share=9000+0(rem 0/10000)"
+          },
+          "lines": [
+            {
+              "account_type": "obligation_expense",
+              "party_id": "prn_01M43N1CW2XJV3BYACW0TAZAZM",
+              "allocation_role": "payer_expense",
+              "currency": "USD",
+              "debit_minor": 10000,
+              "credit_minor": 0
+            },
+            {
+              "account_type": "platform_fee",
+              "party_id": "plt_01M43N1CW2X7ZBX9C8X76M2WP2",
+              "allocation_role": "platform_fee",
+              "currency": "USD",
+              "debit_minor": 0,
+              "credit_minor": 1000
+            },
+            {
+              "account_type": "payable",
+              "party_id": "agt_01M43N1CW2F634JADPDHM94262",
+              "allocation_role": "payee_share",
+              "currency": "USD",
+              "debit_minor": 0,
+              "credit_minor": 9000
+            }
+          ],
+          "posted_at": "2026-10-04T14:28:11.817Z"
+        },
+        {
+          "batch_id": "pbt_01M43N1CXDZB5NCWC59F1PRFZ0",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "entry_type": "settlement",
+          "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+          "settlement_event_id": "ste_01M43N1CXCKDD496VJKAHQWSGB",
+          "reverses_batch_id": null,
+          "policy_version": null,
+          "source_event_ids": [
+            "evt_01M43N1CXC8T1DS77KMP673BTV"
+          ],
+          "rounding": null,
+          "lines": [
+            {
+              "account_type": "payable",
+              "party_id": "agt_01M43N1CW2F634JADPDHM94262",
+              "allocation_role": "settlement",
+              "currency": "USD",
+              "debit_minor": 9000,
+              "credit_minor": 0
+            },
+            {
+              "account_type": "settlement_reported",
+              "party_id": "agt_01M43N1CW2F634JADPDHM94262",
+              "allocation_role": "settlement",
+              "currency": "USD",
+              "debit_minor": 0,
+              "credit_minor": 9000
+            }
+          ],
+          "posted_at": "2026-10-04T14:28:11.821Z"
+        }
+      ],
+      "settlement_instructions": [
+        {
+          "instruction_id": "sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+          "obligation_id": "obl_01M43N1CW2XFJ203RWT7FF2RNJ",
+          "decision_id": "dec_01M43N1CX7QCHRMY8N3SWERAED",
+          "beneficiary_party_id": "agt_01M43N1CW2F634JADPDHM94262",
+          "beneficiary_ref": "sandbox-beneficiary",
+          "currency": "USD",
+          "amount_minor": 9000,
+          "adapter": "sandbox",
+          "idempotency_key": "local-sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+          "expires_at": "2026-10-11T14:28:11.820Z",
+          "status": "settled",
+          "created_at": "2026-10-04T14:28:11.820Z"
+        }
+      ],
+      "settlement_events": [
+        {
+          "settlement_event_id": "ste_01M43N1CXCKDD496VJKAHQWSGB",
+          "instruction_id": "sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+          "provider": "sandbox",
+          "provider_event_id": "sbx_evt_sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+          "provider_reference": "sbx_tr_sti_01M43N1CXCXP6RMEVS2E9N6ZF0",
+          "provider_status": "paid",
+          "normalized_status": "settled",
+          "currency": "USD",
+          "amount_minor": 9000,
+          "raw_json": "{\"simulated\":true,\"instruction_id\":\"sti_01M43N1CXCXP6RMEVS2E9N6ZF0\"}",
+          "reported_at": "2026-10-04T14:28:11.820Z"
+        }
+      ]
+    },
+    "signature": {
+      "key_id": "key_01M43N1CVZ5H8BD9CNWF3EGJNC",
+      "key_version": 1,
+      "algorithm": "Ed25519",
+      "value": "bNUZYtHK_Ln1yu1BOM6Pzt6PGASLHShHJIqoWIshTpURDZs5AnZ2sD_8AnZeqZkkfyXli-j4ywndWhlzTMYOAQ"
+    }
+  }
+}

@@ -1,8 +1,7 @@
 {
   "name": "@atcn/adapter-a2a",
-  "version": "1.4.1",
-  "private": true,
-  "description": "Bridges A2A (Agent2Agent v1.0) task streams into ATCN signed lifecycle and evidence events, against the hosted API or the local runner",
+  "version": "1.5.0",
+  "description": "Record paid A2A (Agent2Agent) work in ATCN: signed task events, billing references, estimates, signed outcomes and sub-task lineage",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -33,7 +32,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/schema": "1.4.1",
-    "@atcn/sdk": "1.4.1"
+    "@atcn/schema": "1.5.0",
+    "@atcn/sdk": "1.5.0"
   }
 }

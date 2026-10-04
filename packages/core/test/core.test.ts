@@ -20,7 +20,9 @@ import {
   declaredExecutions,
   evaluateClearing,
   hasCycle,
+  obligationAttestationConflicts,
   planChecks,
+  producerRole,
   remainingExposure,
   type EvidenceInput,
 } from "../src/index.js";
@@ -254,6 +256,132 @@ describe("clearing engine", () => {
     expect(decision.accepted_amount_minor).toBe(0);
   });
 
+  it("sends failed checks to the reviewer when the refund terms say failures are disputed (A2A discussion #1969)", () => {
+    const refundTerms = { on_failure: "dispute" as const, on_timeout: "refund" as const, after_settlement: { cap_minor: 100, window_seconds: 86_400 } };
+    const t = terms({ schema_version: "1.2", dispute_reviewer_id: principal, refund_terms: refundTerms });
+    expect(ObligationTermsSchema.safeParse(t).success).toBe(true);
+    const tests = evidence("test_report");
+    const lint = evidence("lint_report");
+    const patch = evidence("patch_ref");
+    const input = {
+      terms: t,
+      terms_digest: digestOf(t),
+      policy,
+      policy_digest: policyRef.policy_digest,
+      acceptance_event_id: newId("event"),
+      completion_event_id: null,
+      evidence: [tests, lint, patch],
+      verifier_results: [resultFor(t, "main", "unit_tests", tests, "fail"), resultFor(t, "main", "lint", lint, "pass")],
+    };
+    const disputed = evaluateClearing(input);
+    expect(disputed.outcome).toBe("disputed");
+    expect(disputed.disputed_amount_minor).toBe(100);
+    expect(disputed.deliverable_outcomes[0].reasons).toContainEqual({ code: "failure_terms_dispute" });
+
+    const refunded = evaluateClearing({ ...input, terms: { ...t, refund_terms: { ...refundTerms, on_failure: "refund" } } });
+    expect(refunded.outcome).toBe("rejected");
+  });
+
+  it("validates refund terms against the rest of the terms", () => {
+    const refundTerms = { on_failure: "dispute" as const, on_timeout: "refund" as const, after_settlement: { cap_minor: 100, window_seconds: 86_400 } };
+    const messages = (t: ObligationTerms) => (ObligationTermsSchema.safeParse(t).error?.issues ?? []).map((i) => i.message);
+    expect(messages(terms({ refund_terms: refundTerms, dispute_reviewer_id: principal }))).toEqual(["refund_terms requires schema_version 1.2"]);
+    expect(messages(terms({ schema_version: "1.2", refund_terms: refundTerms }))).toEqual(["refund_terms.on_failure dispute requires dispute_reviewer_id"]);
+    expect(messages(terms({ schema_version: "1.2", dispute_reviewer_id: principal, refund_terms: { ...refundTerms, on_timeout: "dispute" } }))).toEqual([
+      "refund_terms.on_timeout must be refund: the network expires an obligation at its deadline and pays nothing",
+    ]);
+    expect(messages(terms({ schema_version: "1.2", dispute_reviewer_id: principal, refund_terms: { ...refundTerms, after_settlement: { cap_minor: 101, window_seconds: 60 } } }))).toEqual([
+      "refund_terms.after_settlement.cap_minor exceeds max_amount_minor",
+    ]);
+  });
+
+  it("sends a check with conflicting attestations to the reviewer, never picking a winner (evidence plan phase 4)", () => {
+    const t = terms({ deliverables: [{ deliverable_id: "main", description: "x", amount_minor: 100, required_checks: ["review"] }] });
+    const attestation = evidence("verifier_attestation");
+    const patch = evidence("patch_ref");
+    const input = {
+      terms: t,
+      terms_digest: digestOf(t),
+      policy,
+      policy_digest: policyRef.policy_digest,
+      acceptance_event_id: newId("event"),
+      completion_event_id: null,
+      evidence: [attestation, patch],
+      verifier_results: [resultFor(t, "main", "review", attestation, "pass")],
+    };
+    expect(evaluateClearing(input).outcome).toBe("accepted");
+    const conflict = { kind: "disagreement" as const, subject: `${t.obligation_id}/main/review`, attestation_digests: [digestOf("a"), digestOf("b")].sort(), signers: ["agt_a", "agt_b"] };
+    const decision = evaluateClearing({ ...input, attestation_conflicts: [conflict] });
+    expect(decision.outcome).toBe("disputed");
+    expect(decision.deliverable_outcomes[0].reasons).toContainEqual({ code: "conflicting_attestations", check_id: "review", detail: "disagreement" });
+    expect(decision.decision_maker.id).toBe("atcn-clearing-engine@1.1.0");
+
+    const runConflict = { ...conflict, kind: "equivocation" as const, subject: `${t.obligation_id}/execution:run_1` };
+    expect(evaluateClearing({ ...input, attestation_conflicts: [runConflict] }).outcome).toBe("disputed");
+    const otherObligation = { ...conflict, subject: `obl_other/main/review` };
+    expect(evaluateClearing({ ...input, attestation_conflicts: [otherObligation] }).outcome).toBe("accepted");
+  });
+
+  it("treats too few independent witnesses as insufficient evidence, not a failure of the work", () => {
+    const witnessPolicy = { ...policy, checks: [...policy.checks, { check_id: "witnesses", verifier: "witness_quorum", verifier_version: "1.0.0", evidence_type: "witness_attestation", config: {} }] };
+    const t = terms({ deliverables: [{ deliverable_id: "main", description: "x", amount_minor: 100, required_checks: ["witnesses"] }] });
+    const witnessed = evidence("witness_attestation");
+    const patch = evidence("patch_ref");
+    const result: VerifierResult = {
+      ...resultFor(t, "main", "review", witnessed, "fail"),
+      check_id: "witnesses",
+      verifier_name: "witness_quorum",
+      verifier_version: "1.0.0",
+      config_digest: digestOf({}),
+      details: { required: 2, counted: "agt_a@gateway-a.example", refused: "agt_b: shares the domain gateway-a.example with witness agt_a", code: "witness_quorum_not_met" },
+    };
+    const decision = evaluateClearing({
+      terms: t,
+      terms_digest: digestOf(t),
+      policy: witnessPolicy,
+      policy_digest: digestOf(witnessPolicy),
+      acceptance_event_id: newId("event"),
+      completion_event_id: null,
+      evidence: [witnessed, patch],
+      verifier_results: [result],
+    });
+    expect(decision.outcome).toBe("insufficient_evidence");
+    expect(decision.deliverable_outcomes[0].reasons).toContainEqual({ code: "witness_quorum_not_met", check_id: "witnesses", detail: "agt_b: shares the domain gateway-a.example with witness agt_a" });
+  });
+
+  it("validates the witness policy against the rest of the terms", () => {
+    const witnessPolicy = { min_independent_witnesses: 1, independence: "distinct_verified_domain" as const };
+    const messages = (t: ObligationTerms) => (ObligationTermsSchema.safeParse(t).error?.issues ?? []).map((i) => i.message);
+    expect(messages(terms({ schema_version: "1.2", witness_policy: witnessPolicy }))).toEqual([]);
+    expect(messages(terms({ witness_policy: witnessPolicy }))).toEqual(["witness_policy requires schema_version 1.2"]);
+    expect(messages(terms({ schema_version: "1.2", witness_policy: { ...witnessPolicy, witness_agent_ids: [worker] } }))).toEqual([
+      "witness_policy.witness_agent_ids must not include the issuer, the counterparty or the principal",
+    ]);
+    const t = terms({ schema_version: "1.2", witness_policy: witnessPolicy });
+    expect(producerRole(t, newId("agent"))).toBe("witness");
+    expect(producerRole(terms(), newId("agent"))).toBe("other");
+  });
+
+  it("flags two descriptors of one run as equivocation by the counterparty (fixture 11)", () => {
+    const t = terms();
+    const started = (agentVersion: string, sequence: number) =>
+      ({
+        payload: {
+          event_id: newId("event"),
+          event_type: "obligation.started",
+          obligation_id: t.obligation_id,
+          actor_id: worker,
+          data: { execution: { execution_id: "run_1", agent: { agent_id: worker, agent_version: agentVersion } } },
+        },
+        sequence,
+        received_at: "2026-10-05T00:00:00.000Z",
+      }) as unknown as RecordedEvent;
+    const conflicts = obligationAttestationConflicts({ events: [started("1.0.0", 1), started("1.1.0", 2)], terms: t, contents: new Map(), resolveKey: () => null, at: "2026-10-05T12:00:00.000Z" });
+    expect(conflicts).toEqual([expect.objectContaining({ kind: "equivocation", subject: `${t.obligation_id}/execution:run_1`, signers: [worker] })]);
+    expect(conflicts[0].attestation_digests).toHaveLength(2);
+    expect(obligationAttestationConflicts({ events: [started("1.0.0", 1), started("1.0.0", 2)], terms: t, contents: new Map(), resolveKey: () => null, at: "2026-10-05T12:00:00.000Z" })).toEqual([]);
+  });
+
   it("plans one verifier run per deliverable and check", () => {
     const t = terms();
     const plan = planChecks({ terms: t, policy, evidence: [evidence("test_report")] });
@@ -333,7 +461,7 @@ describe("runs and skills (schema 1.1 terms)", () => {
     expect(ObligationTermsSchema.safeParse(terms({ schema_version: "1.1", skill })).success).toBe(true);
     const old = ObligationTermsSchema.safeParse(terms({ skill }));
     expect(old.success).toBe(false);
-    expect(old.error?.issues[0].message).toBe("skill requires schema_version 1.1");
+    expect(old.error?.issues[0].message).toBe("skill requires schema_version 1.1 or later");
     expect(ObligationTermsSchema.parse(terms()).skill).toBeUndefined();
   });
 

@@ -1,0 +1,115 @@
+{
+  "description": "Escrow attestation records in the shape of A2A-SE GET /v1/exchange/escrow/{escrow_id}/attestations, generated with the a2a-settlement-exchange reference implementation (a2a-settlement-exchange commit 620e29e, compliance/merkle.py and compliance/models.py, MIT licence) in a 5-leaf log.",
+  "release": {
+    "leaf_index": 1,
+    "data_hash": "fa9cd400727c1c4f26ef64b75e7684b897978d0aab3fe13e6908cd846468d3d0",
+    "created_at": "2026-10-04T13:17:04.999064+00:00",
+    "merkle_root": "d5a616846382a184663e97746d59d58706bed8210b3ea8c56f4bb4121c9714c0",
+    "proof": [
+      {
+        "sibling_hash": "c576f17693cb5ab4145a32b4d22c75161acaf411c285547cbef4100f2d4a22fe",
+        "side": "left"
+      },
+      {
+        "sibling_hash": "7faa909821e96d0653eecf7a72c7168917d15744cc34a68d44a5caedf3a3774d",
+        "side": "right"
+      },
+      {
+        "sibling_hash": "e8b7e38d2b83c76617754989c0bfa90893ae1e3ab54551c44306dac0d4c45d6e",
+        "side": "right"
+      }
+    ],
+    "schema_id": "urn:a2a-se:escrow-release-attestation:v1",
+    "payload": {
+      "amount_paid": 1200,
+      "fee_collected": 0,
+      "header": {
+        "created_at": "2026-10-01T12:00:00Z",
+        "issuer_id": "exchange",
+        "nonce": "b71d6ca3-eb00-4b2a-beb3-5273146dbde4",
+        "schema_id": "urn:a2a-se:escrow-release-attestation:v1",
+        "version": "1.0"
+      },
+      "release_kind": "full",
+      "reputation_attestation_type": "urn:a2a-settlement:ema-reputation:v1",
+      "settlement": {
+        "amount": 1200,
+        "currency": "USD",
+        "escrow_id": "esc-1",
+        "fee_amount": 0,
+        "occurred_at": "2026-10-01T12:00:00Z",
+        "provider": {
+          "account_id": null,
+          "did": "did:a2a:gamma",
+          "external_ids": {}
+        },
+        "rail": "a2a-se",
+        "requester": {
+          "account_id": null,
+          "did": "did:a2a:acme",
+          "external_ids": {}
+        },
+        "self_dealing_class": null,
+        "settlement_kind": "a2a-se",
+        "task_id": "a2a-task-7",
+        "task_type": "search"
+      }
+    }
+  },
+  "refund": {
+    "leaf_index": 2,
+    "data_hash": "5fd2781f8dd200815065d83700fd981969f77b3d006eaa7cd689595c16471735",
+    "created_at": "2026-10-04T13:17:04.999239+00:00",
+    "merkle_root": "d5a616846382a184663e97746d59d58706bed8210b3ea8c56f4bb4121c9714c0",
+    "proof": [
+      {
+        "sibling_hash": "901f5aff0c0ecf36014297dbaed8724b5ddea6e7e2327c6df05a3c777ddc4e49",
+        "side": "right"
+      },
+      {
+        "sibling_hash": "bfb81aba1d52a1e38af123e84779b2d5b143ca7c124084a6173cbd10597d9b87",
+        "side": "left"
+      },
+      {
+        "sibling_hash": "e8b7e38d2b83c76617754989c0bfa90893ae1e3ab54551c44306dac0d4c45d6e",
+        "side": "right"
+      }
+    ],
+    "schema_id": "urn:a2a-se:escrow-refund-attestation:v1",
+    "payload": {
+      "amount_returned": 500,
+      "header": {
+        "created_at": "2026-10-01T12:00:00Z",
+        "issuer_id": "exchange",
+        "nonce": "b1693900-d9d5-4151-aea1-782a7d7e0214",
+        "schema_id": "urn:a2a-se:escrow-refund-attestation:v1",
+        "version": "1.0"
+      },
+      "refund_kind": "full",
+      "refund_reason": "search failed (café index offline)",
+      "reputation_attestation_type": "urn:a2a-settlement:ema-reputation:v1",
+      "settlement": {
+        "amount": 500,
+        "currency": "USD",
+        "escrow_id": "esc-2",
+        "fee_amount": 0,
+        "occurred_at": "2026-10-01T12:00:00Z",
+        "provider": {
+          "account_id": null,
+          "did": "did:a2a:gamma",
+          "external_ids": {}
+        },
+        "rail": "a2a-se",
+        "requester": {
+          "account_id": null,
+          "did": "did:a2a:acme",
+          "external_ids": {}
+        },
+        "self_dealing_class": null,
+        "settlement_kind": "a2a-se",
+        "task_id": "a2a-task-8",
+        "task_type": "search"
+      }
+    }
+  }
+}

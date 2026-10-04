@@ -38,6 +38,7 @@ The bundled example is [`examples/local-runner/demos/calculator-fix/job.json`](.
 | --- | --- | --- |
 | `operator` | no (default `"Local operator"`) | The buyer's name. It appears as the closure issuer's operator name. |
 | `task` | yes | The task. See below. |
+| `provider_keys` | no | Public keys of the providers and gateways whose signed claims, estimates and holds the file carries. See [Signed records](#signed-records). |
 | `obligations` | no | Work agreed on the clearing network and cleared by a policy. |
 | `delegations` | no | Work bought off the network. |
 | `financial_events` | no | Charges, invoices, refunds, fees and other money events from outside the network. |
@@ -76,6 +77,8 @@ Every step is a signed event, and all of them are recorded on the task as a dele
 | `evidence.patch_ref` | no | Path to a unified diff touching at least one file. Every policy requires it. |
 | `completion_note` | no | The provider's note when proposing completion |
 | `settle` | no (default `true`) | Simulate paying the provider after clearing |
+| `cancel` | no | `{ "reason": "..." }`: the buyer cancels after the provider started, so no evidence, evaluation, clearing or payment follows. The contingent amount is reversed and the delegation records a `cancellation` claim. Leave out `evidence` and `completion_note`. |
+| `escrow` | no | `{ "rail": "...", "escrow_ref": "..." }`: an escrow rail that reads this obligation's outcome. After the decision, the runner writes a signed clearing verdict (`verdict-<obligation_id>.json`) that the rail can name as its release authority, and verifies it against the closure package. ATCN only publishes the verdict; the rail decides whether to release. |
 
 The decision depends on the evidence:
 
@@ -90,6 +93,7 @@ Off-network work. The fields are the same as the hosted API's delegation request
 | Field | Meaning |
 | --- | --- |
 | `external_ref` | Your reference; charges can match it with `match.delegation_external_ref` |
+| `provider` | The provider's name, for example one listed in `provider_keys`. Needed for the provider's signed claims and signed agent estimates. |
 | `provider_name_stated`, `provider_own_id` | Who did the work |
 | `provider_job_ref` | The provider's job reference; charges can match it with `match.provider_job_ref` |
 | `parent_delegation_id` | `"ext:<external_ref>"` of another delegation in this file, for nested work |
@@ -108,6 +112,7 @@ Each entry in `claims` has these fields:
 - **`evidence`:** optional `{ "uri", "digest", "evidence_type" }` references. The URI must use https, urn, s3 or gs.
 - **`terms`:** for `terms_update` only.
 - **`supersedes_event_id` and `reason`:** for `correction` only (not usable in a job file; see the end of this page).
+- **`signer`:** `{ "key_id", "value" }` for a claim the provider signed. See [Signed records](#signed-records).
 
 ## `financial_events[]`
 
@@ -115,7 +120,7 @@ Money events from outside the clearing network. The fields are the same as the h
 
 | Field | Required | Meaning |
 | --- | --- | --- |
-| `type` | yes | `quote`, `invoice`, `charge`, `payment_reported`, `refund`, `reversal`, `fee`, `credit`, `adjustment` or `fx_rate` |
+| `type` | yes | `quote`, `invoice`, `charge`, `payment_reported`, `refund`, `reversal`, `fee`, `credit`, `adjustment`, `fx_rate`, `estimate` or `hold`. Estimates and holds need an `expectation` and never count as cost; see [ESTIMATES.md](ESTIMATES.md). |
 | `source`, `source_event_id` | yes | Where the event came from and its ID there. The same pair sent twice with the same content is ignored; with different content it opens a `duplicate_event` exception. |
 | `amount_minor` | yes | Non-negative, except for `adjustment` |
 | `currency` | no | Defaults to the task's currency |
@@ -125,12 +130,31 @@ Money events from outside the clearing network. The fields are the same as the h
 
 An event is attributed only when exactly one task or delegation matches. No match opens an `unmatched_charge` exception and leaves the event off the task. More than one match opens `ambiguous_match`.
 
+## Signed records
+
+A provider can sign its outcome claims (`completion`, `partial_completion`, `provider_failure`, `cancellation`) and its estimates, and a budget gateway can sign its estimates and holds. The signatures are made before the run, outside ATCN, with the signer's private key. The job file carries only the public keys and the signatures.
+
+1. List each signer's public key in `provider_keys`: `{ "provider": "Gamma Search", "key_id": "gamma-1", "public_key": "<base64url Ed25519 public key>" }`. The runner binds the key to that provider before recording anything (`operator_configured`), and the closure lists the binding so the signatures verify offline.
+2. Name the provider on the delegation with `"provider": "Gamma Search"`. A signed claim also needs `provider_job_ref`, `asserted_by: "provider"` and the `occurred_at` it was signed with.
+3. Add the signature:
+   - **Claims:** `"signer": { "key_id": "gamma-1", "value": "<signature>" }`. The signature is over `buildOutcomeStatement({ type, provider_job_ref, occurred_at, note, evidence })`.
+   - **Estimates and holds:** `"expectation": { ..., "signer": { "provider": "Cost Gateway", "key_id": "gw-1", "value": "<signature>" } }`, with the `event_date` it was signed with. The signature is over `buildExpectationStatement(...)`. An agent estimate must be signed by the delegation's provider.
+
+```ts
+import { buildOutcomeStatement, signOutcomeStatement } from "@atcn/subledger";
+
+const statement = buildOutcomeStatement({ type: "provider_failure", provider_job_ref: "job-9", occurred_at: "2026-10-01T12:00:00Z", note: "index offline" });
+const value = signOutcomeStatement(statement, providerPrivateKey);
+```
+
+A signature that does not verify against the listed key stops the run with an error naming the record. Verified records are labelled `provider_key_signed`, or `gateway_signed` for a gateway's estimates and holds; unsigned ones stay `buyer_recorded`.
+
 ## Not supported by the runner
 
 These fail with an explicit error:
 
 - **References to other recorded events.** `reverses_event_id`, `included_in_event_id`, `settles_event_id` and a claim's `supersedes_event_id` need IDs that are generated during the run, so reversals and corrections can't be written in a job file.
-- **Clearing-network features beyond accept, evaluate, clear and settle.** That rules out drafts, open offers, amendments, subcontracted obligations, cancellations and disputes.
+- **Clearing-network features beyond accept, cancel, evaluate, clear and settle.** That rules out drafts, open offers, amendments, subcontracted obligations and disputes.
 - **Evidence other than local files.**
 
 The hosted API supports all of them.

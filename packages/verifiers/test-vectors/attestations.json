@@ -1,5 +1,5 @@
 {
-  "description": "Adversarial external attestations. plugin_cases run external_attestation at verifier_version against context; resolution_cases apply expiry and revocation, where an attestation's signer is its verifier_id and its digest is the digest of its payload. declared_executions are the run descriptors the counterparty declared; each one's binding is executionBinding(descriptor).",
+  "description": "Adversarial external attestations. plugin_cases run external_attestation at verifier_version against context; resolution_cases apply expiry and revocation, where an attestation's signer is its verifier_id and its digest is the digest of its payload. witness_cases run witness_quorum@1.0.0 over all the attestations, with verified_domains as the service's domain records. conflict_cases list the conflicts among attestations in effect at `at`, each claim's subject being obligation_id/deliverable_id/check_id. declared_executions are the run descriptors the counterparty declared; each one's binding is executionBinding(descriptor).",
   "keys": [
     {
       "key_id": "key_01J00000000000000000000001",
@@ -20,6 +20,34 @@
       "key_version": 1,
       "actor_id": "agt_01J00000000000000000000002",
       "public_key": "2inpWwLgD_oVZFd1-x0roiKhlDOV7qBrlOLAV7e-adA",
+      "revoked_at": null
+    },
+    {
+      "key_id": "key_01J00000000000000000000011",
+      "key_version": 1,
+      "actor_id": "agt_01J00000000000000000000011",
+      "public_key": "3TaPzwgbrpe8RP3iHo8bNzuqIS1OCIfvthNgrLQGfLU",
+      "revoked_at": null
+    },
+    {
+      "key_id": "key_01J00000000000000000000012",
+      "key_version": 1,
+      "actor_id": "agt_01J00000000000000000000012",
+      "public_key": "2pcdyuKykLQCXiiB0Z-BVZG_dsl2k8WVrzUSwhH-2Uc",
+      "revoked_at": null
+    },
+    {
+      "key_id": "key_01J00000000000000000000013",
+      "key_version": 1,
+      "actor_id": "agt_01J00000000000000000000013",
+      "public_key": "apkElXTvv14iSlZRzdNnZMg5tufBDWWSSWBO0a6v8AA",
+      "revoked_at": null
+    },
+    {
+      "key_id": "key_01J00000000000000000000014",
+      "key_version": 1,
+      "actor_id": "agt_01J00000000000000000000014",
+      "public_key": "V2A8_ruXdh1OfwwvVkG6pjSOLOxc2Sa6zI1oX9hBp4M",
       "revoked_at": null
     }
   ],
@@ -70,6 +98,27 @@
       "binding": {
         "execution_id": "run_fx_2",
         "execution_digest": "sha256:bb182e7b27a9d464574e15cbbe3dbb261106bf85455443e79557c9c5f4f9c254"
+      }
+    },
+    {
+      "descriptor": {
+        "execution_id": "run_fx_3",
+        "protocol": {
+          "name": "a2a",
+          "task_id": "task-fx-3"
+        },
+        "agent": {
+          "agent_id": "agt_01J00000000000000000000003",
+          "agent_version": "1.1.0"
+        },
+        "skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        }
+      },
+      "binding": {
+        "execution_id": "run_fx_3",
+        "execution_digest": "sha256:634a740dd65a37dab80b6094f5793a153949d25ad7f1f9a7d525eae9ee47e3ed"
       }
     },
     {
@@ -1562,6 +1611,1030 @@
           }
         ]
       }
+    }
+  ],
+  "witness_cases": [
+    {
+      "name": "independent_witness",
+      "fixture": null,
+      "description": "Control: one witness on its own verified domain, quorum 1.",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "witnesses",
+        "party_ids": [
+          "agt_01J00000000000000000000004",
+          "agt_01J00000000000000000000003",
+          "prn_01J00000000000000000000001"
+        ],
+        "verified_domains": {
+          "agt_01J00000000000000000000004": "buyer.example",
+          "prn_01J00000000000000000000001": "buyer.example",
+          "agt_01J00000000000000000000003": "worker.example",
+          "agt_01J00000000000000000000011": "gateway-a.example",
+          "agt_01J00000000000000000000012": "gateway-b.example",
+          "agt_01J00000000000000000000013": "worker.example",
+          "agt_01J00000000000000000000014": "gateway-a.example"
+        },
+        "witness_policy": {
+          "min_independent_witnesses": 1,
+          "independence": "distinct_verified_domain"
+        },
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000011",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000011",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "EbLFOMraZ6AIJzpxHFyJuOMmOwpTaTOleVQapAVsI_em_RctE2B_7fUGQ4cS-6tNiJe6YeMZ3fEFNheBaEtMDw"
+          }
+        }
+      ],
+      "expected": {
+        "status": "pass",
+        "code": null,
+        "counted": [
+          "agt_01J00000000000000000000011"
+        ]
+      }
+    },
+    {
+      "name": "witness_on_counterparty_domain",
+      "fixture": 12,
+      "description": "The only witness shares the counterparty's verified domain, so it is not independent.",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "witnesses",
+        "party_ids": [
+          "agt_01J00000000000000000000004",
+          "agt_01J00000000000000000000003",
+          "prn_01J00000000000000000000001"
+        ],
+        "verified_domains": {
+          "agt_01J00000000000000000000004": "buyer.example",
+          "prn_01J00000000000000000000001": "buyer.example",
+          "agt_01J00000000000000000000003": "worker.example",
+          "agt_01J00000000000000000000011": "gateway-a.example",
+          "agt_01J00000000000000000000012": "gateway-b.example",
+          "agt_01J00000000000000000000013": "worker.example",
+          "agt_01J00000000000000000000014": "gateway-a.example"
+        },
+        "witness_policy": {
+          "min_independent_witnesses": 1,
+          "independence": "distinct_verified_domain"
+        },
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000013",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000013",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "ACue9x2l2eZgXar_Xm7ZXLGAgerlkQcQf2nFSm_j6AasbkKTv5eB2UeabODIRON77JBBeRDyBMXwquI8cw-tCw"
+          }
+        }
+      ],
+      "expected": {
+        "status": "fail",
+        "code": "witness_quorum_not_met",
+        "counted": []
+      }
+    },
+    {
+      "name": "two_witnesses_one_domain",
+      "fixture": 13,
+      "description": "Two witnesses under one registrable domain count once; the quorum of 2 is not met.",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "witnesses",
+        "party_ids": [
+          "agt_01J00000000000000000000004",
+          "agt_01J00000000000000000000003",
+          "prn_01J00000000000000000000001"
+        ],
+        "verified_domains": {
+          "agt_01J00000000000000000000004": "buyer.example",
+          "prn_01J00000000000000000000001": "buyer.example",
+          "agt_01J00000000000000000000003": "worker.example",
+          "agt_01J00000000000000000000011": "gateway-a.example",
+          "agt_01J00000000000000000000012": "gateway-b.example",
+          "agt_01J00000000000000000000013": "worker.example",
+          "agt_01J00000000000000000000014": "gateway-a.example"
+        },
+        "witness_policy": {
+          "min_independent_witnesses": 2,
+          "independence": "distinct_verified_domain"
+        },
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000011",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000011",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "EbLFOMraZ6AIJzpxHFyJuOMmOwpTaTOleVQapAVsI_em_RctE2B_7fUGQ4cS-6tNiJe6YeMZ3fEFNheBaEtMDw"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000014",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000014",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "vM5ALKmr7yKXL4lADTuWzRkHcWnrGYf0ER2_SNSki7Ocb3ld-H_XQtOalH0X5ABvBzXv-iovaQzbL-lkEi1bAA"
+          }
+        }
+      ],
+      "expected": {
+        "status": "fail",
+        "code": "witness_quorum_not_met",
+        "counted": [
+          "agt_01J00000000000000000000011"
+        ]
+      }
+    },
+    {
+      "name": "two_independent_witnesses",
+      "fixture": 13,
+      "description": "Control: two witnesses on different domains meet a quorum of 2.",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "witnesses",
+        "party_ids": [
+          "agt_01J00000000000000000000004",
+          "agt_01J00000000000000000000003",
+          "prn_01J00000000000000000000001"
+        ],
+        "verified_domains": {
+          "agt_01J00000000000000000000004": "buyer.example",
+          "prn_01J00000000000000000000001": "buyer.example",
+          "agt_01J00000000000000000000003": "worker.example",
+          "agt_01J00000000000000000000011": "gateway-a.example",
+          "agt_01J00000000000000000000012": "gateway-b.example",
+          "agt_01J00000000000000000000013": "worker.example",
+          "agt_01J00000000000000000000014": "gateway-a.example"
+        },
+        "witness_policy": {
+          "min_independent_witnesses": 2,
+          "independence": "distinct_verified_domain"
+        },
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000011",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000011",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "EbLFOMraZ6AIJzpxHFyJuOMmOwpTaTOleVQapAVsI_em_RctE2B_7fUGQ4cS-6tNiJe6YeMZ3fEFNheBaEtMDw"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000012",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000012",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "j8NsuTeIWvaehMGyXpiePJ-ipPCcCjkJIYL1qhq8NZOloO5HilWsHqkrcV5MMZ1h0iduKy10pXwPqRcijML7DA"
+          }
+        }
+      ],
+      "expected": {
+        "status": "pass",
+        "code": null,
+        "counted": [
+          "agt_01J00000000000000000000011",
+          "agt_01J00000000000000000000012"
+        ]
+      }
+    },
+    {
+      "name": "witness_not_agreed",
+      "fixture": 14,
+      "description": "The witness is not in witness_agent_ids, so it does not count.",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "witnesses",
+        "party_ids": [
+          "agt_01J00000000000000000000004",
+          "agt_01J00000000000000000000003",
+          "prn_01J00000000000000000000001"
+        ],
+        "verified_domains": {
+          "agt_01J00000000000000000000004": "buyer.example",
+          "prn_01J00000000000000000000001": "buyer.example",
+          "agt_01J00000000000000000000003": "worker.example",
+          "agt_01J00000000000000000000011": "gateway-a.example",
+          "agt_01J00000000000000000000012": "gateway-b.example",
+          "agt_01J00000000000000000000013": "worker.example",
+          "agt_01J00000000000000000000014": "gateway-a.example"
+        },
+        "witness_policy": {
+          "min_independent_witnesses": 1,
+          "witness_agent_ids": [
+            "agt_01J00000000000000000000011"
+          ],
+          "independence": "distinct_verified_domain"
+        },
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000012",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000012",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "j8NsuTeIWvaehMGyXpiePJ-ipPCcCjkJIYL1qhq8NZOloO5HilWsHqkrcV5MMZ1h0iduKy10pXwPqRcijML7DA"
+          }
+        }
+      ],
+      "expected": {
+        "status": "fail",
+        "code": "witness_quorum_not_met",
+        "counted": []
+      }
+    },
+    {
+      "name": "independence_unverifiable",
+      "fixture": null,
+      "description": "The counterparty has no verified domain, so overlap cannot be checked.",
+      "context": {
+        "obligation_id": "obl_01J00000000000000000000001",
+        "deliverable_id": "main",
+        "check_id": "witnesses",
+        "party_ids": [
+          "agt_01J00000000000000000000004",
+          "agt_01J00000000000000000000003",
+          "prn_01J00000000000000000000001"
+        ],
+        "verified_domains": {
+          "agt_01J00000000000000000000004": "buyer.example",
+          "prn_01J00000000000000000000001": "buyer.example",
+          "agt_01J00000000000000000000003": null,
+          "agt_01J00000000000000000000011": "gateway-a.example",
+          "agt_01J00000000000000000000012": "gateway-b.example",
+          "agt_01J00000000000000000000013": "worker.example",
+          "agt_01J00000000000000000000014": "gateway-a.example"
+        },
+        "witness_policy": {
+          "min_independent_witnesses": 1,
+          "independence": "distinct_verified_domain"
+        },
+        "terms_skill": {
+          "namespace": "a2a",
+          "skill_id": "code-fix"
+        },
+        "declared_executions": [
+          {
+            "execution_id": "run_fx_1",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-1",
+              "context_id": "ctx-fx-1"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0",
+              "model": {
+                "provider": "example",
+                "name": "coder",
+                "version": "2026-09"
+              }
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "code-fix"
+            }
+          },
+          {
+            "execution_id": "run_fx_2",
+            "protocol": {
+              "name": "a2a",
+              "task_id": "task-fx-2"
+            },
+            "agent": {
+              "agent_id": "agt_01J00000000000000000000003",
+              "agent_version": "1.0.0"
+            },
+            "skill": {
+              "namespace": "a2a",
+              "skill_id": "translate"
+            }
+          }
+        ],
+        "obligation_evidence_digests": [
+          "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+        ],
+        "at": "2026-10-05T12:00:00.000Z"
+      },
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "witnesses",
+            "verifier_id": "agt_01J00000000000000000000011",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Observed the run produce the patch",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z",
+            "role": "witness"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000011",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "EbLFOMraZ6AIJzpxHFyJuOMmOwpTaTOleVQapAVsI_em_RctE2B_7fUGQ4cS-6tNiJe6YeMZ3fEFNheBaEtMDw"
+          }
+        }
+      ],
+      "expected": {
+        "status": "invalid_evidence",
+        "code": "independence_unverifiable",
+        "counted": []
+      }
+    }
+  ],
+  "conflict_cases": [
+    {
+      "name": "execution_mismatch",
+      "fixture": 3,
+      "description": "Two runs were declared (agent 1.0.0 and 1.1.0); two verifiers judged the same check on different runs.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000002",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_3",
+              "execution_digest": "sha256:634a740dd65a37dab80b6094f5793a153949d25ad7f1f9a7d525eae9ee47e3ed"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000002",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "_s7BMKsltIkwShIgPmQGh7QwJp2ufyXU0QSIfGtsisPhv5HmabPj121FCVY-wFPWnJRzipP3c7qt-adSbrxUAw"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "kind": "execution_mismatch",
+          "subject": "obl_01J00000000000000000000001/main/review",
+          "attestations": [
+            0,
+            1
+          ],
+          "signers": [
+            "agt_01J00000000000000000000001",
+            "agt_01J00000000000000000000002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "disputed_by_other_verifier",
+      "fixture": 9,
+      "description": "The auditor disputes the reviewer's pass with its own fail: both are kept, as a disagreement and a dispute.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000002",
+            "status": "fail",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:30:00.000Z",
+            "refs": [
+              {
+                "relation": "disputes",
+                "attestation_digest": "sha256:16c325600f585e4f52ac301f35a2b30af2be39127b190f7f2ee1020cf2cad225",
+                "reason": "tests were skipped"
+              }
+            ]
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000002",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "vjHKATmZWzkCo6t-0fsYvKEsXSmYpjNgwZXvKg9my-0bq3bbSiJzCwDK5sxMfEG4312vpAa8bRdkIV_wkqBVBA"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "kind": "disagreement",
+          "subject": "obl_01J00000000000000000000001/main/review",
+          "attestations": [
+            0,
+            1
+          ],
+          "signers": [
+            "agt_01J00000000000000000000001",
+            "agt_01J00000000000000000000002"
+          ]
+        },
+        {
+          "kind": "disputed",
+          "subject": "obl_01J00000000000000000000001/main/review",
+          "attestations": [
+            0,
+            1
+          ],
+          "signers": [
+            "agt_01J00000000000000000000001",
+            "agt_01J00000000000000000000002"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "equivocation",
+      "fixture": 10,
+      "description": "The reviewer signs both pass and fail for the same check without revoking either.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "fail",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:30:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "jjQVWGRQCFEP0lkRXyRu58_4ultbWHfp0W0qjDrddn30tk0cJytCXAjOJp_mG6An2tQEI2qm9F2DqY_GbN81Cw"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "kind": "equivocation",
+          "subject": "obl_01J00000000000000000000001/main/review",
+          "attestations": [
+            0,
+            1
+          ],
+          "signers": [
+            "agt_01J00000000000000000000001"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "revoked_then_replaced",
+      "fixture": 10,
+      "description": "Control: the reviewer revokes its pass and signs a fail; a revoked attestation no longer conflicts.",
+      "at": "2026-10-05T12:00:00.000Z",
+      "attestations": [
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "pass",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:00:00.000Z"
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "CxvMBkJicGNeva3Q102HVla-mKxITNRxk6Vj6_sNpyu1HEgTEIMfv2kXB71fpByfbyr1ag4ckjOFDqr12s_cDQ"
+          }
+        },
+        {
+          "payload": {
+            "obligation_id": "obl_01J00000000000000000000001",
+            "deliverable_id": "main",
+            "check_id": "review",
+            "verifier_id": "agt_01J00000000000000000000001",
+            "status": "fail",
+            "probabilistic": false,
+            "model": null,
+            "summary": "Fix is correct",
+            "execution": {
+              "execution_id": "run_fx_1",
+              "execution_digest": "sha256:b1d9a406e0c3471d912c677f3bf707536024fd2d7e779a2f973f963e99f866a5"
+            },
+            "evidence_digests": [
+              "sha256:1a059963bbf3198857755a48c741d351e21515186ce951464b89a0de0797c081"
+            ],
+            "issued_at": "2026-10-05T11:30:00.000Z",
+            "refs": [
+              {
+                "relation": "revokes",
+                "attestation_digest": "sha256:16c325600f585e4f52ac301f35a2b30af2be39127b190f7f2ee1020cf2cad225",
+                "reason": "judged the wrong patch"
+              }
+            ]
+          },
+          "signature": {
+            "key_id": "key_01J00000000000000000000001",
+            "key_version": 1,
+            "algorithm": "Ed25519",
+            "value": "J1wulm1oJTGq_1mbiwV2A82x0BYIX7hV-2V6ua0m21247nv0yoq4Sr9BOUJ6ZS85DCF4XZ0mndCerAFQHUaCCA"
+          }
+        }
+      ],
+      "expected": []
     }
   ]
 }

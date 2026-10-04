@@ -1,0 +1,7 @@
+charge_id,a2a_task_id,amount_cents,currency,created_at
+gamma_ch_1,a2a-task-1,100,USD,2026-10-01T12:01:00Z
+gamma_ch_2,a2a-task-2,100,USD,2026-10-01T12:02:00Z
+gamma_ch_3,a2a-task-3,100,USD,2026-10-01T12:03:00Z
+gamma_ch_4,a2a-task-4,100,USD,2026-10-01T12:04:00Z
+gamma_ch_5,a2a-task-5,100,USD,2026-10-01T12:05:00Z
+gamma_ch_9,a2a-task-from-another-job,100,USD,2026-10-01T12:09:00Z

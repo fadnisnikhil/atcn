@@ -12,6 +12,6 @@
     "isolatedModules": true,
     "types": ["node"]
   },
-  "include": ["packages/*/src", "packages/*/scripts", "packages/*/test", "examples/*/src", "examples/*/test"],
+  "include": ["packages/*/src", "packages/*/scripts", "packages/*/test", "examples/*/src", "examples/*/scripts", "examples/*/test"],
   "exclude": ["**/node_modules", "**/dist"]
 }

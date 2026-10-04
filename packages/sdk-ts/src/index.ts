@@ -1,7 +1,11 @@
 export { EventSigner, type SignerIdentity } from "./signer.js";
 export { buildTerms, termsData, acceptanceData, buildEvidenceEnvelope, type TermsInput, type EnvelopeInput } from "./builders.js";
 export { AtcnClient, AtcnApiError, SDK_HEADER, SDK_VERSION, type ClientOptions, type RequestOptions } from "./client.js";
-export { verifyClosurePackage, REFERENCE_POLICIES, CODE_CHANGE_POLICY_V1, CODE_CHANGE_POLICY_V1_1, CODE_CHANGE_SUBTASK_POLICY_V1 } from "@atcn/core";
+export { verifyClosurePackage, REFERENCE_POLICIES, CODE_CHANGE_POLICY_V1, CODE_CHANGE_POLICY_V1_1, CODE_CHANGE_SUBTASK_POLICY_V1, AGENT_USAGE_POLICY_V1 } from "@atcn/core";
 export { SubledgerClient, ReceiptLinkClient, CaptureQueue, ext, stableKey, type CaptureOperation, type CaptureQueueOptions, type FlushResult } from "./subledger.js";
 export { verifySubledgerDocument, buildResponseStatement, signStatement, verifyStatementSignature } from "@atcn/subledger";
+export { buildExpectationStatement, signExpectation, verifyExpectationSignature, type ExpectationStatement, type ExpectationStatementInput } from "@atcn/subledger";
+export { buildOutcomeStatement, signOutcomeStatement, verifyOutcomeSignature, type EvidenceRef, type OutcomeStatement, type SignedClaimType } from "@atcn/subledger";
 export { verifyWebhook, signWebhook, WEBHOOK_SIGNATURE_HEADER, generateKeyPair, digestOf, sha256Digest, canonicalize, executionBinding } from "@atcn/schema";
+export { traceDigest, summarizeTrace, traceProblems, checkTrace, expectedCostFromUsage, allowedDifference, usageCostDetails, type AgentTrace, type UsageSummary, type Pricing, type ExecutionDescriptor } from "@atcn/schema";
+export { traceFromOtelSpans, OTEL_GENAI_CONVENTIONS, A2A_TASK_ID_ATTRIBUTE, type OtlpTraceExport, type OtelImportResult, type SkippedSpan } from "./otel.js";

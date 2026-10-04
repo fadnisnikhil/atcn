@@ -1,7 +1,7 @@
 {
   "name": "@atcn/verify-cli",
-  "version": "1.4.1",
-  "description": "Offline verifier for ATCN closure packages, subledger task closures, and provider receipts: atcn-verify <document.json> --keys <keys.json>",
+  "version": "1.5.0",
+  "description": "atcn-verify: check a signed ATCN closure, receipt, closure package or clearing verdict offline, without contacting anyone",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -27,8 +27,8 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/core": "1.4.1",
-    "@atcn/schema": "1.4.1",
-    "@atcn/subledger": "1.4.1"
+    "@atcn/core": "1.5.0",
+    "@atcn/schema": "1.5.0",
+    "@atcn/subledger": "1.5.0"
   }
 }

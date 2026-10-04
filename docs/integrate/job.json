@@ -1,0 +1,70 @@
+{
+  "operator": "Acme Robotics",
+  "task": {
+    "external_ref": "research-run-42",
+    "currency": "USD",
+    "budget_minor": 100
+  },
+  "delegations": [
+    {
+      "external_ref": "handoff-1",
+      "provider_name_stated": "Gamma Search API",
+      "provider_job_ref": "a2a-task-1",
+      "claims": [
+        {
+          "type": "completion",
+          "asserted_by": "provider",
+          "note": "A2A task completed"
+        }
+      ]
+    },
+    {
+      "external_ref": "handoff-2",
+      "provider_name_stated": "Gamma Search API",
+      "provider_job_ref": "a2a-task-2",
+      "claims": [
+        {
+          "type": "completion",
+          "asserted_by": "provider",
+          "note": "A2A task completed"
+        }
+      ]
+    },
+    {
+      "external_ref": "handoff-3",
+      "provider_name_stated": "Gamma Search API",
+      "provider_job_ref": "a2a-task-3",
+      "claims": [
+        {
+          "type": "completion",
+          "asserted_by": "provider",
+          "note": "A2A task completed"
+        }
+      ]
+    },
+    {
+      "external_ref": "handoff-4",
+      "provider_name_stated": "Gamma Search API",
+      "provider_job_ref": "a2a-task-4",
+      "claims": [
+        {
+          "type": "completion",
+          "asserted_by": "provider",
+          "note": "A2A task completed"
+        }
+      ]
+    },
+    {
+      "external_ref": "handoff-5",
+      "provider_name_stated": "Gamma Search API",
+      "provider_job_ref": "a2a-task-5",
+      "claims": [
+        {
+          "type": "completion",
+          "asserted_by": "provider",
+          "note": "A2A task completed"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "atcn_jcs_v1",
+  "license": "Apache-2.0",
+  "spec": "RFC 8785 (JCS), restricted to strings, booleans, null, arrays, objects and safe integers. Non-integer numbers are rejected.",
+  "canon_version": "jcs-rfc8785-v1",
+  "reference_impl": "@atcn/schema canonicalize",
+  "vectors": [
+    {
+      "vector_id": "atcn-jcs-001",
+      "description": "A signed ATCN network event",
+      "preimage": {
+        "schema_version": "1.0",
+        "event_id": "evt_01J00000000000000000000001",
+        "event_type": "obligation.started",
+        "obligation_id": "obl_01J00000000000000000000001",
+        "actor_id": "agt_01J00000000000000000000001",
+        "actor_platform_id": "plt_01J00000000000000000000001",
+        "event_time": "2026-10-02T14:00:00.000Z",
+        "causation_ids": [],
+        "data": {}
+      },
+      "expected_jcs_bytes_b64": "eyJhY3Rvcl9pZCI6ImFndF8wMUowMDAwMDAwMDAwMDAwMDAwMDAwMDAwMSIsImFjdG9yX3BsYXRmb3JtX2lkIjoicGx0XzAxSjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxIiwiY2F1c2F0aW9uX2lkcyI6W10sImRhdGEiOnt9LCJldmVudF9pZCI6ImV2dF8wMUowMDAwMDAwMDAwMDAwMDAwMDAwMDAwMSIsImV2ZW50X3RpbWUiOiIyMDI2LTEwLTAyVDE0OjAwOjAwLjAwMFoiLCJldmVudF90eXBlIjoib2JsaWdhdGlvbi5zdGFydGVkIiwib2JsaWdhdGlvbl9pZCI6Im9ibF8wMUowMDAwMDAwMDAwMDAwMDAwMDAwMDAwMSIsInNjaGVtYV92ZXJzaW9uIjoiMS4wIn0=",
+      "expected_sha256": "7d81ff7e0d32d22fb36f4f3461b495dbbaba5c1f0a39b94755a1177fb5c4996c"
+    },
+    {
+      "vector_id": "atcn-jcs-002",
+      "description": "Nested objects, escapes, negative numbers and U+2028",
+      "preimage": {
+        "zeta": "last",
+        "alpha": {
+          "nested_b": [
+            3,
+            2,
+            1
+          ],
+          "nested_a": null
+        },
+        "unicode": "café €   \"quoted\" \\ \n\t",
+        "amount_minor": 25000,
+        "negative": -42,
+        "flag": true
+      },
+      "expected_jcs_bytes_b64": "eyJhbHBoYSI6eyJuZXN0ZWRfYSI6bnVsbCwibmVzdGVkX2IiOlszLDIsMV19LCJhbW91bnRfbWlub3IiOjI1MDAwLCJmbGFnIjp0cnVlLCJuZWdhdGl2ZSI6LTQyLCJ1bmljb2RlIjoiY2Fmw6kg4oKsIOKAqCBcInF1b3RlZFwiIFxcIFxuXHQiLCJ6ZXRhIjoibGFzdCJ9",
+      "expected_sha256": "2bac1eab846b7859b5f1a28f8df44d5baf5f1830681951e7943ebee217cf7553"
+    },
+    {
+      "vector_id": "atcn-jcs-003",
+      "description": "Key order with uppercase, non-ASCII keys, controls and empty containers",
+      "preimage": {
+        "Zed": "uppercase sorts before lowercase",
+        "a": "ascii",
+        "étape": "non-ascii key sorts after ascii",
+        "control": "\u0001\u001f\b\f\r",
+        "empty": {
+          "list": [],
+          "object": {}
+        }
+      },
+      "expected_jcs_bytes_b64": "eyJaZWQiOiJ1cHBlcmNhc2Ugc29ydHMgYmVmb3JlIGxvd2VyY2FzZSIsImEiOiJhc2NpaSIsImNvbnRyb2wiOiJcdTAwMDFcdTAwMWZcYlxmXHIiLCJlbXB0eSI6eyJsaXN0IjpbXSwib2JqZWN0Ijp7fX0sIsOpdGFwZSI6Im5vbi1hc2NpaSBrZXkgc29ydHMgYWZ0ZXIgYXNjaWkifQ==",
+      "expected_sha256": "d49a51be81dcc6fce8bcdcee1a71e5bc62ee9b1abfccdd9b971aa4e4d282a988"
+    }
+  ]
+}

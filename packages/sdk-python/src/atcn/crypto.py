@@ -59,11 +59,32 @@ def sign_bytes(data: bytes, private_key: str) -> str:
     return b64url_encode(Ed25519PrivateKey.from_private_bytes(b64url_decode(private_key)).sign(data))
 
 
+_BASE64URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+
+def _strict_b64url_decode(text: str) -> bytes:
+    """Decodes like the TypeScript SDK: trailing "=" and "+/" are accepted, any other character outside base64url is an
+    error (Python's decoder would skip it), and leftover bits are dropped."""
+    clean = text.rstrip("=").replace("+", "-").replace("/", "_")
+    buffer = bits = 0
+    out = bytearray()
+    for char in clean:
+        value = _BASE64URL_ALPHABET.find(char)
+        if value < 0:
+            raise ValueError(f"Invalid base64url character: {char}")
+        buffer = ((buffer << 6) | value) & 0xFFFFFF
+        bits += 6
+        if bits >= 8:
+            bits -= 8
+            out.append((buffer >> bits) & 0xFF)
+    return bytes(out)
+
+
 def verify_bytes(data: bytes, signature: str, public_key: str) -> bool:
     try:
-        Ed25519PublicKey.from_public_bytes(b64url_decode(public_key)).verify(b64url_decode(signature), data)
+        Ed25519PublicKey.from_public_bytes(_strict_b64url_decode(public_key)).verify(_strict_b64url_decode(signature), data)
         return True
-    except (InvalidSignature, ValueError):
+    except (InvalidSignature, ValueError, TypeError, AttributeError):
         return False
 
 

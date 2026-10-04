@@ -1,7 +1,7 @@
 {
   "name": "@atcn/core",
-  "version": "1.4.1",
-  "description": "Deterministic ATCN logic: delegation bounds, clearing policy evaluation, allocation, journal balance, closure-package verification",
+  "version": "1.5.0",
+  "description": "ATCN obligations: policy decisions on submitted evidence, a balanced journal, and closure packages and clearing verdicts you can verify offline",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -32,6 +32,6 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/schema": "1.4.1"
+    "@atcn/schema": "1.5.0"
   }
 }

@@ -1,19 +1,42 @@
-import { AttestationRefSchema, ExecutionBindingSchema, ExecutionDescriptorSchema } from "@atcn/schema";
+import { AttestationRefSchema, ExecutionBindingSchema, ExecutionDescriptorSchema, PricingSchema, RefundTermsSchema, SkillRefSchema, USAGE_METERS } from "@atcn/schema";
 import { z } from "zod";
-import { ASSURANCE_LABELS, ATTESTABLE_FIELDS, CLAIM_ASSERTERS, Currency, DELIVERY_EVENT_TYPES, EvidenceRefSchema, FINANCIAL_EVENT_TYPES, FxSchema, Minor, NORMALIZED_STATUSES, PAYERS, RESPONSE_TYPES } from "./types.js";
+import {
+  SubledgerWitnessPolicySchema,
+  ExpectationSchema,
+  KeySignerSchema,
+  RailAttestationSchema,
+  EXPECTATION_ISSUERS,
+  HOLD_STATUSES,
+  ASSURANCE_LABELS,
+  ATTESTABLE_FIELDS,
+  CLAIM_ASSERTERS,
+  Currency,
+  DELIVERY_EVENT_TYPES,
+  EvidenceRefSchema,
+  FINANCIAL_EVENT_TYPES,
+  FxSchema,
+  Minor,
+  NORMALIZED_STATUSES,
+  PAYERS,
+  RESPONSE_TYPES,
+  UsageRecordSchema,
+} from "./types.js";
 
 /**
  * Signed documents of the Agent Work Subledger (PRD v1.2 §6, §16).
  * Schema 1.3 adds closure `obligation_links`, the clearing-network claim asserters, and the `network_recorded` assurance label;
  * 1.2 documents must use neither. Schema 1.4 adds delegation `execution`, the response statement fields `execution`,
  * `issued_at`, `expires_at` and `refs`, and the `expired` and `revoked` labels; 1.2 and 1.3 documents must use none
- * of them (see packages/schema/COMPATIBILITY.md).
+ * of them. Schema 1.5 adds delegation `pricing`, `refund_terms` and `witness_policy`, claim `usage`, the `delivery.usage`
+ * field, closure `usage_checks`, `additional_models` in runs, financial event `skill`, the `pending_finality` status,
+ * the statement `role`, the `estimate` and `hold` event types with `expectation`, task `estimate_tolerance_bps` and
+ * closure `expectation_report`; earlier documents must use none of them (see packages/schema/COMPATIBILITY.md).
  */
 
-export const SUBLEDGER_SCHEMA_VERSION = "1.4" as const;
-export const SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS = ["1.2", "1.3", "1.4"] as const;
+export const SUBLEDGER_SCHEMA_VERSION = "1.5" as const;
+export const SUPPORTED_SUBLEDGER_SCHEMA_VERSIONS = ["1.2", "1.3", "1.4", "1.5"] as const;
 /** Must equal this package's version in package.json (checked by a test). */
-export const SUBLEDGER_VERIFIER_VERSION = "1.4.1" as const;
+export const SUBLEDGER_VERIFIER_VERSION = "1.5.0" as const;
 export const RECEIPT_DOCUMENT_TYPE = "atcn.subledger.receipt" as const;
 export const CLOSURE_DOCUMENT_TYPE = "atcn.subledger.closure" as const;
 export const RESPONSE_STATEMENT_TYPE = "atcn.subledger.receipt_response" as const;
@@ -106,6 +129,12 @@ export const FinancialEventRecordSchema = z.object({
   settles_event_id: z.string().nullable(),
   fx: FxSchema.nullable(),
   reason: z.string().nullable(),
+  /** Schema 1.5, present only when stated. */
+  skill: SkillRefSchema.optional(),
+  /** Schema 1.5, estimates and holds only. */
+  expectation: ExpectationSchema.optional(),
+  /** Schema 1.5, payments and refunds only. */
+  rail_attestation: RailAttestationSchema.optional(),
 });
 
 export const DeliveryClaimSchema = z.object({
@@ -121,12 +150,17 @@ export const DeliveryClaimSchema = z.object({
   retrospective: z.boolean(),
   occurred_at: Iso,
   recorded_at: Iso,
+  /** Schema 1.5, completion and partial_completion only, present only when recorded. */
+  usage: UsageRecordSchema.optional(),
+  /** Schema 1.5, a provider-signed outcome claim only. */
+  signer: KeySignerSchema.optional(),
 });
 export type DeliveryClaim = z.infer<typeof DeliveryClaimSchema>;
 
 export const FIELD_STATES = ["missing", "imported", "buyer_asserted", "provider_reported", "contested"] as const;
 export type FieldState = (typeof FIELD_STATES)[number];
-export const FieldStatusSchema = z.record(z.enum(ATTESTABLE_FIELDS), z.enum(FIELD_STATES));
+/** Not exhaustive, because schema 1.5 added a field; the verifier checks the field set for the document's version. */
+export const FieldStatusSchema = z.partialRecord(z.enum(ATTESTABLE_FIELDS), z.enum(FIELD_STATES));
 
 export const CorrectionSchema = z.object({ field: z.enum(ATTESTABLE_FIELDS), proposed_value: z.string().max(1000), reason: z.string().max(2000) });
 export type Correction = z.infer<typeof CorrectionSchema>;
@@ -150,6 +184,11 @@ export const ResponseStatementSchema = z.object({
   expires_at: Iso.optional(),
   /** Schema 1.4: earlier statements this one revokes (same provider only) or disputes, by statement digest. */
   refs: z.array(AttestationRefSchema).max(20).optional(),
+  /**
+   * Schema 1.5: "witness" when an independent witness, not the provider, signs that it observed the run. A witness
+   * statement is a signed_attestation that cites the run and at least one evidence item.
+   */
+  role: z.literal("witness").optional(),
 });
 export type ResponseStatement = z.infer<typeof ResponseStatementSchema>;
 
@@ -222,6 +261,12 @@ export const ReceiptPayloadSchema = z.object({
     downstream_visibility: z.enum(["unknown", "disclosed", "none"]),
     /** Schema 1.4, present only when recorded: the run a provider statement can cite. */
     execution: ExecutionDescriptorSchema.optional(),
+    /** Schema 1.5, present only when agreed: the usage prices. */
+    pricing: PricingSchema.optional(),
+    /** Schema 1.5, present only when agreed: what happens on failure or timeout, and the refund budget. */
+    refund_terms: RefundTermsSchema.optional(),
+    /** Schema 1.5, present only when required: the independent witnesses the delegation needs. */
+    witness_policy: SubledgerWitnessPolicySchema.optional(),
   }),
   provider: z.object({
     provider_id: z.string().nullable(),
@@ -239,6 +284,8 @@ export const ReceiptPayloadSchema = z.object({
     z.object({ response_id: z.string(), receipt_revision: z.number().int().positive(), fields: z.array(z.enum(ATTESTABLE_FIELDS)), decision: z.enum(["accepted", "rejected", "open"]) }),
   ),
   lineage: z.object({ complete: z.boolean(), capture_gaps: z.array(CaptureGapSchema.omit({ delegation_id: true })) }),
+  /** Schema 1.5, present only when a claim or estimate on the receipt is signed: exactly the key bindings its signers name. */
+  key_bindings: z.array(KeyBindingRecordSchema).optional(),
 });
 export type ReceiptPayload = z.infer<typeof ReceiptPayloadSchema>;
 export const SignedReceiptSchema = z.object({ payload: ReceiptPayloadSchema, signature: SignatureSchema, operator_signatures: z.array(OperatorSignatureSchema).optional() });
@@ -269,8 +316,93 @@ export const ClosureDelegationSchema = z.object({
   created_at: Iso,
   /** Schema 1.4, present only when recorded, so older closures keep their bytes. */
   execution: ExecutionDescriptorSchema.optional(),
+  /** Schema 1.5, present only when agreed. */
+  pricing: PricingSchema.optional(),
+  /** Schema 1.5, present only when agreed. */
+  refund_terms: RefundTermsSchema.optional(),
+  /** Schema 1.5, present only when required. */
+  witness_policy: SubledgerWitnessPolicySchema.optional(),
 });
 export type ClosureDelegation = z.infer<typeof ClosureDelegationSchema>;
+
+/** One delegation's usage priced at its agreed rates and compared with what was billed (schema 1.5). */
+export const UsageCheckSchema = z.object({
+  delegation_id: z.string(),
+  currency: Currency,
+  /** Null when some usage has no rate. */
+  expected_minor: Minor.nullable(),
+  lines: z.array(
+    z.object({
+      meter: z.enum(USAGE_METERS),
+      model: z.object({ provider: z.string(), name: z.string() }).optional(),
+      tool_name: z.string().optional(),
+      units: Minor,
+      cost_minor: Minor,
+    }),
+  ),
+  billed_minor: Minor,
+  /** billed − expected; positive means billed above usage cost. */
+  difference_minor: Minor.nullable(),
+  allowed_difference_minor: Minor.nullable(),
+  within_tolerance: z.boolean().nullable(),
+  unpriced: z.array(z.string()),
+  trace_digests: z.array(Digest),
+  /** Labels of the usage claims, plus provider_key_signed when the provider signed an attestation of delivery.usage. */
+  assurance: Assurance,
+});
+export type UsageCheck = z.infer<typeof UsageCheckSchema>;
+
+/** Estimate and hold against actual cost for one node (the task itself or a delegation), in the node's currency. */
+export const RailAttestationEntrySchema = z.object({
+  financial_event_id: z.string(),
+  scheme: z.string(),
+  rail: z.string(),
+  rail_ref: z.string(),
+  anchor: z.string(),
+  assurance: z.tuple([z.literal("rail_attested")]),
+});
+
+export const ExpectationVarianceSchema = z.object({
+  /** Latest estimate issued before the node's first charge that no later estimate replaced; null when none. */
+  estimated_minor: Minor.nullable(),
+  /** Open plus captured holds. */
+  held_minor: Minor,
+  /** Net cost (task: the whole tree's net cost). */
+  actual_minor: Minor,
+  /** actual − estimated, and the same in basis points of the estimate (null without an estimate, or when it is 0). */
+  variance_vs_estimate_minor: Minor.nullable(),
+  variance_vs_estimate_bps: z.number().int().nullable(),
+  variance_vs_hold_minor: Minor.nullable(),
+  variance_vs_hold_bps: z.number().int().nullable(),
+});
+
+/** Estimates and holds compared with actual cost (schema 1.5). Recorded only; nothing was enforced, blocked or reserved. */
+export const ExpectationReportSchema = z.object({
+  currency: Currency,
+  task: ExpectationVarianceSchema.extend({
+    /** Net cost on nodes that have no estimate. */
+    unestimated_minor: Minor,
+  }),
+  nodes: z.array(ExpectationVarianceSchema.extend({ node_id: z.string(), estimate_event_id: z.string().nullable() })),
+  records: z.array(
+    z.object({
+      financial_event_id: z.string(),
+      node_id: z.string(),
+      type: z.enum(["estimate", "hold"]),
+      issued_by: z.enum(EXPECTATION_ISSUERS),
+      /**
+       * "current" counts toward the node's figures (for estimates: the one used); "not_latest" is a current estimate
+       * replaced by a later one from another issuer; "superseded" was explicitly replaced; "after_charge" estimates are
+       * kept but not used; "other_currency" is not in the task's currency.
+       */
+      status: z.enum(["current", "not_latest", "superseded", "after_charge", "other_currency"]),
+      /** Holds only: the latest status, released when the work failed or was cancelled while the hold was open. */
+      hold_status: z.enum(HOLD_STATUSES).nullable(),
+      assurance: Assurance,
+    }),
+  ),
+});
+export type ExpectationReport = z.infer<typeof ExpectationReportSchema>;
 
 export const AllocationRecordSchema = z.object({
   allocation_id: z.string(),
@@ -299,6 +431,10 @@ export const ExceptionRecordSchema = z.object({
   created_at: Iso,
 });
 export type ExceptionRecord = z.infer<typeof ExceptionRecordSchema>;
+
+/** A derived exception a person resolved or dismissed while its condition still holds; schema 1.5 closures list these. */
+export const ResolvedExceptionSchema = ExceptionRecordSchema.extend({ resolved_by: z.string(), resolved_at: Iso, resolution: z.string().nullable() });
+export type ResolvedException = z.infer<typeof ResolvedExceptionSchema>;
 
 export const NodeRollupSchema = z.object({
   node_id: z.string(),
@@ -354,6 +490,8 @@ export const ClosurePayloadSchema = z.object({
     scope_ref: z.string().nullable(),
     retrospective: z.boolean(),
     created_at: Iso,
+    /** Schema 1.5, present only when set. */
+    estimate_tolerance_bps: z.number().int().nonnegative().optional(),
   }),
   delegations: z.array(ClosureDelegationSchema),
   delivery_claims: z.array(DeliveryClaimSchema),
@@ -368,6 +506,14 @@ export const ClosurePayloadSchema = z.object({
   disclosure: DisclosureSchema,
   /** Present only when at least one delegation is backed by an obligation, so older closures keep their bytes. */
   obligation_links: z.array(ObligationLinkSchema).optional(),
+  /** Schema 1.5, present only when at least one delegation has pricing and recorded usage. */
+  usage_checks: z.array(UsageCheckSchema).optional(),
+  /** Schema 1.5, present only when the task has estimates or holds. */
+  expectation_report: ExpectationReportSchema.optional(),
+  /** Schema 1.5, present only when a payment or refund carries a rail attestation: those that verify, labelled rail_attested. */
+  rail_attestations: z.array(RailAttestationEntrySchema).optional(),
+  /** Schema 1.5, present only when a person resolved a derived exception whose condition still held at generated_at. */
+  resolved_exceptions: z.array(ResolvedExceptionSchema).optional(),
 });
 export type ClosurePayload = z.infer<typeof ClosurePayloadSchema>;
 export const SignedClosureSchema = z.object({ payload: ClosurePayloadSchema, signature: SignatureSchema, operator_signatures: z.array(OperatorSignatureSchema).optional() });

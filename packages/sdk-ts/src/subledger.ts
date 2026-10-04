@@ -6,14 +6,18 @@ import {
   type AllocationInputSchema,
   type AllocationRuleInputSchema,
   type AttestableField,
+  type CaptureGapInput,
   type Correction,
   type DelegationEventInputSchema,
   type DelegationInputSchema,
   type EvidenceRef,
+  type ExpectationIssuer,
   type FinancialEventInput,
+  type ImportField,
   type OperatorKeyRecord,
   type OperatorSignature,
   type ProviderInputSchema,
+  type RailAttestation,
   type ResponseType,
   type SignedClosure,
   type SignedReceipt,
@@ -24,6 +28,19 @@ import { AtcnApiError, AtcnClient, type ClientOptions } from "./client.js";
 
 type Json = Record<string, unknown>;
 type Opts = { idempotencyKey?: string };
+/**
+ * How the hosted importer reads a CSV export: key_columns is a comma-separated list of columns that identify a row,
+ * map names the export's column for an import field, and minor_digits is the decimal places of amount_major (default 2).
+ */
+type CsvImportOptions = {
+  kind?: "charge" | "invoice" | "estimate" | "hold";
+  source?: string;
+  key_columns?: string;
+  currency?: string;
+  issued_by?: ExpectationIssuer;
+  map?: Partial<Record<ImportField, string>>;
+  minor_digits?: number;
+};
 
 /** Caller-supplied references address records before their server IDs are known: ext("job-42"). */
 export const ext = (externalRef: string) => `ext:${externalRef}`;
@@ -79,9 +96,19 @@ export class SubledgerClient {
       { idempotencyKey: opts.idempotencyKey ?? stableKey("financial", input.source, input.source_event_id) },
     );
   }
-  importCsv(csv: string, opts: Opts = {}) {
+  recordRailAttestation(input: { attestation: RailAttestation; source: string; match?: Record<string, string>; event_date?: string }, opts: Opts = {}) {
+    return this.http.request<{ financial_event: Json; deduplicated: boolean; attributed?: boolean; attribution: Json | null; match_id: string | null; exception_ids: string[] }>(
+      "POST",
+      "/v1/financial-events/rail-attestations",
+      input,
+      opts,
+    );
+  }
+  importCsv(csv: string, opts: Opts & CsvImportOptions = {}) {
+    const { idempotencyKey, map, ...query } = opts;
     return this.http.request<{ imported: number; deduplicated: number; rejected: number; rows: Json[] }>("POST", "/v1/financial-events/import", undefined, {
-      idempotencyKey: opts.idempotencyKey,
+      idempotencyKey,
+      query: { ...query, map: map === undefined ? undefined : JSON.stringify(map) },
       textBody: { contentType: "text/csv", text: csv },
     });
   }
@@ -109,7 +136,7 @@ export class SubledgerClient {
   resolveException(exceptionId: string, input: { status: "resolved" | "dismissed"; resolution: string }, opts: Opts = {}) {
     return this.http.request<Json>("POST", `/v1/subledger-exceptions/${exceptionId}/resolve`, input, opts);
   }
-  reportCaptureGap(taskId: string, gap: { delegation_id?: string | null; kind: "capture_failed" | "queue_overflow" | "provider_undisclosed" | "manual_gap"; detail: string }, opts: Opts = {}) {
+  reportCaptureGap(taskId: string, gap: { delegation_id?: string | null; kind: CaptureGapInput["kind"]; detail: string }, opts: Opts = {}) {
     return this.http.request<Json>("POST", `/v1/tasks/${encodeURIComponent(taskId)}/capture-gaps`, gap, opts);
   }
   closeTask(taskId: string, opts: Opts = {}) {
@@ -132,6 +159,15 @@ export class SubledgerClient {
       "POST",
       "/v1/receipt-shares",
       { receipt_id: receiptId, allowed_actions: allowedActions, ttl_hours: ttlHours },
+      opts,
+    );
+  }
+  /** A witness link: lets another provider (not the delegation's own) sign that it observed the run. It allows only viewing and witnessing. */
+  createWitnessShare(receiptId: string, witnessProviderId: string, ttlHours?: number, opts: Opts = {}) {
+    return this.http.request<{ share_id: string; token: string; url: string; expires_at: string; allowed_actions: string[]; witness_provider_id: string }>(
+      "POST",
+      "/v1/receipt-shares",
+      { receipt_id: receiptId, allowed_actions: ["view", "witness_attestation"], ttl_hours: ttlHours, witness_provider_id: witnessProviderId },
       opts,
     );
   }
@@ -221,6 +257,8 @@ export class ReceiptLinkClient {
       issued_at?: string;
       expires_at?: string;
       refs?: AttestationRef[];
+      /** Schema 1.5: a witness statement, sent through a witness link. */
+      role?: "witness";
     },
     signing?: { bindingId: string; keyId: string; privateKey: string; issuerOperatorId: string },
     opts: Opts = {},
@@ -238,6 +276,7 @@ export class ReceiptLinkClient {
         issued_at: response.issued_at,
         expires_at: response.expires_at,
         refs: response.refs,
+        role: response.role,
       });
       provider_signature = { binding_id: signing.bindingId, key_id: signing.keyId, value: signStatement(statement, signing.privateKey) };
     }

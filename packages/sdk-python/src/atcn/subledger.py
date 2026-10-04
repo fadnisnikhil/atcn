@@ -17,6 +17,9 @@ from .crypto import digest_of, sha256_digest, sign_bytes, verify_bytes
 Json = dict[str, Any]
 
 RESPONSE_STATEMENT_TYPE = "atcn.subledger.receipt_response"
+EXPECTATION_STATEMENT_TYPE = "atcn.subledger.expectation"
+OUTCOME_STATEMENT_TYPE = "atcn.subledger.outcome"
+SIGNED_CLAIM_TYPES = ("completion", "partial_completion", "cancellation", "provider_failure")
 
 
 def ext(external_ref: str) -> str:
@@ -48,10 +51,12 @@ def build_response_statement(
     issued_at: str | None = None,
     expires_at: str | None = None,
     refs: list[Json] | None = None,
+    role: str | None = None,
 ) -> Json:
     """The statement a provider responds with. receipt needs receipt_id, digest, revision, and issuer_operator_id.
 
-    execution, issued_at, expires_at, and refs (schema 1.4) are left out when None, so older statements keep their bytes.
+    execution, issued_at, expires_at, and refs (schema 1.4) and role (schema 1.5, "witness" when an independent
+    witness signs that it observed the run) are left out when None, so older statements keep their bytes.
     """
     statement: Json = {
         "document_type": RESPONSE_STATEMENT_TYPE,
@@ -65,7 +70,7 @@ def build_response_statement(
         "evidence": evidence or [],
         "corrections": corrections or [],
     }
-    optional = {"execution": execution, "issued_at": issued_at, "expires_at": expires_at, "refs": refs}
+    optional = {"execution": execution, "issued_at": issued_at, "expires_at": expires_at, "refs": refs, "role": role}
     statement.update({key: value for key, value in optional.items() if value is not None})
     return statement
 
@@ -81,6 +86,79 @@ def sign_statement(statement: Json, private_key: str) -> str:
 
 
 def verify_statement_signature(statement: Json, signature: str, public_key: str) -> bool:
+    return verify_bytes(canonicalize(statement).encode("utf-8"), signature, public_key)
+
+
+def _iso_millis(value: str) -> str:
+    """The same normalisation as JavaScript's Date.toISOString(): UTC, milliseconds, trailing Z."""
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return parsed.strftime("%Y-%m-%dT%H:%M:%S.") + f"{parsed.microsecond // 1000:03d}Z"
+
+
+def build_expectation_statement(
+    type: str,
+    source: str,
+    source_event_id: str,
+    amount_minor: int,
+    currency: str,
+    issued_at: str,
+    expectation: Json,
+    provider_reference: str | None = None,
+) -> Json:
+    """What an agent or budget gateway signs for an estimate or hold (schema 1.5). Recorded only, never enforced.
+
+    expectation has issued_by ("agent", "gateway" or "operator"), source_ref, basis, expires_at, supersedes and, for
+    holds, hold_status. issued_at is the record's event_date.
+    """
+    expires_at = expectation.get("expires_at")
+    return {
+        "document_type": EXPECTATION_STATEMENT_TYPE,
+        "type": type,
+        "source": source,
+        "source_event_id": source_event_id,
+        "provider_reference": provider_reference,
+        "amount_minor": amount_minor,
+        "currency": currency,
+        "issued_at": _iso_millis(issued_at),
+        "issued_by": expectation["issued_by"],
+        "source_ref": expectation.get("source_ref"),
+        "basis": expectation.get("basis"),
+        "expires_at": None if expires_at is None else _iso_millis(expires_at),
+        "supersedes": expectation.get("supersedes"),
+        "hold_status": expectation.get("hold_status"),
+    }
+
+
+def sign_expectation(statement: Json, private_key: str) -> str:
+    """Agent- or gateway-side signing. The operator never holds the signer's private key."""
+    return sign_bytes(canonicalize(statement).encode("utf-8"), private_key)
+
+
+def verify_expectation_signature(statement: Json, signature: str, public_key: str) -> bool:
+    return verify_bytes(canonicalize(statement).encode("utf-8"), signature, public_key)
+
+
+def build_outcome_statement(type: str, provider_job_ref: str, occurred_at: str, note: str | None = None, evidence: list[Json] | None = None) -> Json:
+    """What a provider signs about how its work ended (schema 1.5). type is one of SIGNED_CLAIM_TYPES;
+    provider_job_ref is the delegation's job reference (for A2A, the task id); evidence lists {uri, digest, evidence_type}."""
+    if type not in SIGNED_CLAIM_TYPES:
+        raise ValueError(f"type must be one of {', '.join(SIGNED_CLAIM_TYPES)}, not {type}")
+    return {
+        "document_type": OUTCOME_STATEMENT_TYPE,
+        "type": type,
+        "provider_job_ref": provider_job_ref,
+        "occurred_at": _iso_millis(occurred_at),
+        "note": note,
+        "evidence": evidence or [],
+    }
+
+
+def sign_outcome_statement(statement: Json, private_key: str) -> str:
+    """Provider-side signing. The operator never holds the provider's private key."""
+    return sign_bytes(canonicalize(statement).encode("utf-8"), private_key)
+
+
+def verify_outcome_signature(statement: Json, signature: str, public_key: str) -> bool:
     return verify_bytes(canonicalize(statement).encode("utf-8"), signature, public_key)
 
 
@@ -139,8 +217,40 @@ class SubledgerClient:
     def record_financial_event(self, event: Json, idempotency_key: str | None = None) -> Json:
         return self.http.request("POST", "/v1/financial-events", event, idempotency_key or stable_key("financial", event["source"], event["source_event_id"]))
 
-    def import_csv(self, csv_text: str, idempotency_key: str | None = None) -> Json:
-        return self.http.request("POST", "/v1/financial-events/import", idempotency_key=idempotency_key, raw=csv_text.encode("utf-8"), content_type="text/csv")
+    def record_rail_attestation(self, attestation: Json, source: str, match: dict[str, str] | None = None, event_date: str | None = None, idempotency_key: str | None = None) -> Json:
+        """Records a payment rail's own record (A2A-SE escrow record or x402 payment) after the service verifies it offline."""
+        body: Json = {"attestation": attestation, "source": source}
+        if match is not None:
+            body["match"] = match
+        if event_date is not None:
+            body["event_date"] = event_date
+        return self.http.request("POST", "/v1/financial-events/rail-attestations", body, idempotency_key)
+
+    def import_csv(
+        self,
+        csv_text: str,
+        idempotency_key: str | None = None,
+        kind: str | None = None,
+        source: str | None = None,
+        key_columns: list[str] | None = None,
+        currency: str | None = None,
+        issued_by: str | None = None,
+        column_map: dict[str, str] | None = None,
+        minor_digits: int | None = None,
+    ) -> Json:
+        """Without options, the CSV uses the import template. With them, it is a gateway's or provider's own export:
+        key_columns identify a row, column_map names the export's column for an import field (for example
+        {"amount_major": "Total"}), and minor_digits is the decimal places of amount_major (default 2)."""
+        query = {
+            "kind": kind,
+            "source": source,
+            "key_columns": None if key_columns is None else ",".join(key_columns),
+            "currency": currency,
+            "issued_by": issued_by,
+            "map": None if column_map is None else json.dumps(column_map),
+            "minor_digits": None if minor_digits is None else str(minor_digits),
+        }
+        return self.http.request("POST", "/v1/financial-events/import", idempotency_key=idempotency_key, query=query, raw=csv_text.encode("utf-8"), content_type="text/csv")
 
     def list_financial_events(self, unattributed: bool | None = None, source: str | None = None) -> Json:
         return self.http.request("GET", "/v1/financial-events", query={"unattributed": None if unattributed is None else str(unattributed).lower(), "source": source})
@@ -184,6 +294,13 @@ class SubledgerClient:
 
     def create_receipt_share(self, receipt_id: str, allowed_actions: list[str] | None = None, ttl_hours: int | None = None, idempotency_key: str | None = None) -> Json:
         body: Json = {"receipt_id": receipt_id, "allowed_actions": allowed_actions or ["view"]}
+        if ttl_hours is not None:
+            body["ttl_hours"] = ttl_hours
+        return self.http.request("POST", "/v1/receipt-shares", body, idempotency_key)
+
+    def create_witness_share(self, receipt_id: str, witness_provider_id: str, ttl_hours: int | None = None, idempotency_key: str | None = None) -> Json:
+        """A witness link: lets another provider (not the delegation's own) sign that it observed the run. It allows only viewing and witnessing."""
+        body: Json = {"receipt_id": receipt_id, "allowed_actions": ["view", "witness_attestation"], "witness_provider_id": witness_provider_id}
         if ttl_hours is not None:
             body["ttl_hours"] = ttl_hours
         return self.http.request("POST", "/v1/receipt-shares", body, idempotency_key)
@@ -270,8 +387,10 @@ class ReceiptLinkClient:
         issued_at: str | None = None,
         expires_at: str | None = None,
         refs: list[Json] | None = None,
+        role: str | None = None,
     ) -> Json:
-        """receipt needs receipt_id, digest, and revision. signing needs binding_id, key_id, private_key, issuer_operator_id."""
+        """receipt needs receipt_id, digest, and revision. signing needs binding_id, key_id, private_key, issuer_operator_id.
+        role="witness" sends a witness statement (schema 1.5) through a witness link."""
         provider_signature = None
         if signing:
             statement = build_response_statement(
@@ -285,6 +404,7 @@ class ReceiptLinkClient:
                 issued_at=issued_at,
                 expires_at=expires_at,
                 refs=refs,
+                role=role,
             )
             provider_signature = {"binding_id": signing["binding_id"], "key_id": signing["key_id"], "value": sign_statement(statement, signing["private_key"])}
         body = {
@@ -297,7 +417,7 @@ class ReceiptLinkClient:
             "corrections": corrections or [],
             "provider_signature": provider_signature,
         }
-        optional = {"execution": execution, "issued_at": issued_at, "expires_at": expires_at, "refs": refs}
+        optional = {"execution": execution, "issued_at": issued_at, "expires_at": expires_at, "refs": refs, "role": role}
         body.update({key: value for key, value in optional.items() if value is not None})
         return self.http.request("POST", f"/v1/receipts/{receipt['receipt_id']}/responses", body, idempotency_key)
 

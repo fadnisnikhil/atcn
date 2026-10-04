@@ -1,4 +1,13 @@
-import { digestOf, resolveAttestations, type AttestationItem } from "@atcn/schema";
+import {
+  digestOf,
+  disputesInEffect,
+  findConflicts,
+  inEffect,
+  resolveAttestations,
+  type AttestationClaim,
+  type AttestationConflict,
+  type AttestationItem,
+} from "@atcn/schema";
 import { computeRollup, costSign, type Rollup } from "./rollup.js";
 import {
   CLOSURE_DOCUMENT_TYPE,
@@ -17,9 +26,13 @@ import {
   type ObligationLink,
   type ReceiptPayload,
   type ReceiptTotals,
+  type ResolvedException,
   type ResponseRecord,
 } from "./documents.js";
+import { buildExpectationReport } from "./expectations.js";
+import { buildRailAttestationReport } from "./rails.js";
 import { ATTESTABLE_FIELDS, type AttestableField, type FinancialEventRecord } from "./types.js";
+import { usageChecksFor } from "./usage.js";
 
 /**
  * Pure builders for the two projections of one root task (PRD §16): the private closure snapshot
@@ -37,6 +50,8 @@ export interface TaskRecord {
   scope_ref: string | null;
   retrospective: boolean;
   created_at: string;
+  /** Schema 1.5, present only when set. */
+  estimate_tolerance_bps?: number;
 }
 
 export type DelegationRecord = ClosureDelegation & { root_task_id: string; shared_description: string | null };
@@ -57,6 +72,33 @@ export function responseAttestation(response: ResponseRecord): AttestationItem {
     expires_at: s.expires_at,
     refs: s.refs,
   };
+}
+
+/**
+ * Conflicts among key-signed statements (provider or witness) in effect at `at`. A signed_attestation confirms its
+ * fields and a propose_correction contests the corrected ones, per receipt revision: one key doing both is
+ * equivocation, two keys doing different things is disagreement, and a `disputes` ref is a dispute.
+ */
+export function statementConflicts(responses: ResponseRecord[], at: string): AttestationConflict[] {
+  const signed = responses.filter((r) => r.assurance.includes("provider_key_signed"));
+  const items = signed.map(responseAttestation);
+  const resolution = resolveAttestations(items, at);
+  const claims: AttestationClaim[] = signed
+    .filter((r) => inEffect(resolution, r.statement_digest))
+    .flatMap((r) => {
+      const s = r.statement;
+      const claim = (field: string, status: string): AttestationClaim => ({
+        digest: r.statement_digest,
+        signer: r.provider_id,
+        subject: `receipt:${r.receipt_id}@${r.receipt_revision}.${field}`,
+        status,
+        ...(s.execution ? { execution_digest: s.execution.execution_digest } : {}),
+      });
+      if (s.response_type === "signed_attestation") return s.fields.map((f) => claim(f, "confirmed"));
+      if (s.response_type === "propose_correction") return s.corrections.map((c) => claim(c.field, "corrected"));
+      return [];
+    });
+  return findConflicts(claims, disputesInEffect(items, resolution));
 }
 
 const TIME_LABELS: readonly string[] = ["expired", "revoked"];
@@ -130,6 +172,7 @@ export function receiptFieldStatus(delegation: Pick<DelegationRecord, "terms_dig
     "scope.terms_digest": delegation.terms_digest ? "buyer_asserted" : "missing",
     "financial.amounts": events.some((e) => costSign(e.type) !== 0 || e.type === "quote") ? "imported" : "missing",
     "financial.status": events.some((e) => e.normalized_status !== "unknown") ? "imported" : "missing",
+    "delivery.usage": stateOf(active.filter((c) => c.usage !== undefined).at(-1)),
   };
   for (const field of openCorrectionFields(priorResponses)) status[field] = "contested";
   return status;
@@ -153,6 +196,20 @@ export interface ReceiptInput {
   /** Responses to earlier revisions of this receipt chain. */
   prior_responses: ResponseRecord[];
   capture_gaps: CaptureGap[];
+  /** Every key binding known to the issuer; the receipt lists only those its signed claims and estimates name. */
+  key_bindings: KeyBindingRecord[];
+}
+
+/** The key bindings named by the signers of these claims and events, each once, in binding_id order. */
+export function signerKeyBindings(
+  claims: { signer?: { binding_id: string; key_id: string } }[],
+  events: Pick<FinancialEventRecord, "expectation">[],
+  keyBindings: KeyBindingRecord[],
+): KeyBindingRecord[] {
+  const signers = [...claims.map((c) => c.signer), ...events.map((e) => e.expectation?.signer)].filter((s) => s !== undefined);
+  return keyBindings
+    .filter((b) => signers.some((s) => s.binding_id === b.binding_id && s.key_id === b.key_id))
+    .sort((a, b) => (a.binding_id < b.binding_id ? -1 : a.binding_id > b.binding_id ? 1 : 0));
 }
 
 /**
@@ -163,6 +220,7 @@ export function buildReceiptPayload(input: ReceiptInput): ReceiptPayload {
   const d = input.delegation;
   const claims = labelClaims(input.claims);
   const fieldStatus = receiptFieldStatus(d, claims, input.events, input.prior_responses);
+  const keyBindings = signerKeyBindings(input.claims, input.events, input.key_bindings);
   return {
     document_type: RECEIPT_DOCUMENT_TYPE,
     schema_version: SUBLEDGER_SCHEMA_VERSION,
@@ -188,6 +246,9 @@ export function buildReceiptPayload(input: ReceiptInput): ReceiptPayload {
       retrospective: d.retrospective,
       downstream_visibility: d.downstream_visibility,
       ...(d.execution ? { execution: d.execution } : {}),
+      ...(d.pricing ? { pricing: d.pricing } : {}),
+      ...(d.refund_terms ? { refund_terms: d.refund_terms } : {}),
+      ...(d.witness_policy ? { witness_policy: d.witness_policy } : {}),
     },
     provider: {
       provider_id: input.provider?.provider_id ?? null,
@@ -207,6 +268,7 @@ export function buildReceiptPayload(input: ReceiptInput): ReceiptPayload {
       .filter((r) => r.statement.response_type === "propose_correction")
       .map((r) => ({ response_id: r.response_id, receipt_revision: r.receipt_revision, fields: r.statement.fields, decision: r.decision?.status ?? "open" })),
     lineage: { complete: input.capture_gaps.length === 0, capture_gaps: input.capture_gaps.map(({ delegation_id: _delegationId, ...gap }) => gap) },
+    ...(keyBindings.length > 0 ? { key_bindings: keyBindings } : {}),
   };
 }
 
@@ -245,9 +307,15 @@ export interface ClosureInput {
   key_bindings: KeyBindingRecord[];
   capture_gaps: CaptureGap[];
   obligation_links?: ObligationLink[];
+  /** Derived exceptions a person resolved while their condition still holds (resolutionsInForce). */
+  resolved_exceptions?: ResolvedException[];
 }
 
-export function closureDisclosure(input: Pick<ClosureInput, "task" | "delegations" | "claims" | "events" | "responses" | "receipts">): Disclosure {
+/**
+ * What the closure discloses as missing, unverified, contested, provider-reported and retrospective. With
+ * `generated_at` (schema 1.5), fields with conflicting signed statements at that time are contested too.
+ */
+export function closureDisclosure(input: Pick<ClosureInput, "task" | "delegations" | "claims" | "events" | "responses" | "receipts"> & { generated_at?: string }): Disclosure {
   const missing: string[] = [];
   const unverified: string[] = [];
   const contested: string[] = [];
@@ -276,11 +344,23 @@ export function closureDisclosure(input: Pick<ClosureInput, "task" | "delegation
       for (const c of r.statement.corrections) contested.push(`receipt:${r.receipt_id}.${c.field}`);
     }
   }
+  if (input.generated_at !== undefined) {
+    for (const conflict of statementConflicts(input.responses, input.generated_at)) {
+      const field = conflict.subject.replace(/@\d+\./, ".");
+      if (!contested.includes(field)) contested.push(field);
+    }
+  }
   return { missing, unverified, contested, provider_reported: providerReported, retrospective };
 }
 
 /** Private closure snapshot of the full root task: lineage, event digests, all allocation versions, roll-up, and open exceptions. */
 export function buildClosurePayload(input: ClosureInput): ClosurePayload {
+  const claims = labelClaims(input.claims);
+  const rollup = rollupFor(input.task, input.delegations, input.events, input.allocations);
+  const responses = labelResponses(input.responses, input.generated_at);
+  const usageChecks = usageChecksFor(input.delegations, claims, rollup, responses, input.receipts);
+  const expectationReport = buildExpectationReport({ task: input.task, delegations: input.delegations, claims, events: input.events, rollup, key_bindings: input.key_bindings });
+  const railAttestations = buildRailAttestationReport(input.events);
   return {
     document_type: CLOSURE_DOCUMENT_TYPE,
     schema_version: SUBLEDGER_SCHEMA_VERSION,
@@ -292,13 +372,13 @@ export function buildClosurePayload(input: ClosureInput): ClosurePayload {
     issuer: input.issuer,
     task: input.task,
     delegations: input.delegations,
-    delivery_claims: labelClaims(input.claims),
+    delivery_claims: claims,
     financial_events: input.events.map((e) => ({ record: e.record, event_digest: digestOf(e.record), attributed_to: e.attributed_to })),
     allocations: input.allocations,
-    rollup: rollupFor(input.task, input.delegations, input.events, input.allocations),
+    rollup,
     open_exceptions: input.open_exceptions,
     receipts: input.receipts,
-    responses: labelResponses(input.responses, input.generated_at),
+    responses,
     key_bindings: input.key_bindings,
     lineage: {
       complete: input.capture_gaps.length === 0,
@@ -307,5 +387,9 @@ export function buildClosurePayload(input: ClosureInput): ClosurePayload {
     },
     disclosure: closureDisclosure(input),
     ...(input.obligation_links && input.obligation_links.length > 0 ? { obligation_links: input.obligation_links } : {}),
+    ...(usageChecks.length > 0 ? { usage_checks: usageChecks } : {}),
+    ...(expectationReport ? { expectation_report: expectationReport } : {}),
+    ...(railAttestations ? { rail_attestations: railAttestations } : {}),
+    ...(input.resolved_exceptions && input.resolved_exceptions.length > 0 ? { resolved_exceptions: input.resolved_exceptions } : {}),
   };
 }

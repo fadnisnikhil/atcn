@@ -5,8 +5,8 @@ import { REFERENCE_POLICIES } from "@atcn/core";
 import { LocalNetwork, LocalSubledger, loadOrCreateServiceKey } from "@atcn/local-runner";
 import { acceptanceData, buildTerms, termsData } from "@atcn/sdk";
 import { describe, expect, it } from "vitest";
-import { digestOf, type SkillRef } from "@atcn/schema";
-import { A2AObligationBridge, localObligationClient, obligationIdFromMetadata, obligationTaskMetadata, skillIdFromMetadata, type A2AAgentCard } from "../src/index.js";
+import { digestOf, sha256Digest, type SkillRef } from "@atcn/schema";
+import { A2AObligationBridge, artifactEvidenceId, localObligationClient, obligationIdFromMetadata, obligationTaskMetadata, skillIdFromMetadata, type A2AAgentCard } from "../src/index.js";
 
 const PASSING_JUNIT = `<?xml version="1.0"?><testsuites><testsuite name="unit"><testcase name="adds"/><testcase name="handles negatives"/></testsuite></testsuites>`;
 const CLEAN_LINT = JSON.stringify([{ filePath: "src/math.ts", errorCount: 0, warningCount: 0, messages: [] }]);
@@ -101,10 +101,46 @@ describe("A2A bridge", () => {
     expect(network.evaluate(obligationId).decision.outcome).toBe("accepted");
   });
 
-  it("does not record failed or canceled tasks as payment facts", async () => {
+  it("records each artifact once when a client polls tasks/get and every snapshot repeats all artifacts", async () => {
+    const { network, worker, obligationId } = acceptedObligation();
+    const evidenceMeta = (evidence_type: string, verifier: string) => ({ atcn: { evidence_type, verifier, deliverable_ids: ["part-1"] } });
+    const junit = { artifactId: "junit", parts: [{ text: PASSING_JUNIT }], metadata: evidenceMeta("test_report", "junit_tests") };
+    const lint = { artifactId: "lint", parts: [{ text: CLEAN_LINT, mediaType: "application/json" }], metadata: evidenceMeta("lint_report", "eslint_lint") };
+    const snapshot = (state: "TASK_STATE_WORKING" | "TASK_STATE_COMPLETED", artifacts: (typeof junit)[]) => ({ task: { id: "task-1", contextId: "ctx-1", status: { state }, artifacts } });
+    const evidenceOnObligation = () => network.evidence.filter((e) => e.obligation_id === obligationId);
+
+    const bridge = new A2AObligationBridge({ client: localObligationClient(network), worker, obligationId });
+    expect(await bridge.handle(snapshot("TASK_STATE_WORKING", [junit]))).toMatchObject([{ kind: "event", eventType: "obligation.started" }, { kind: "evidence", artifactId: "junit" }]);
+    expect(await bridge.handle(snapshot("TASK_STATE_WORKING", [junit]))).toMatchObject([{ kind: "skipped", detail: expect.stringContaining("already submitted") }]);
+    expect(await bridge.handle(snapshot("TASK_STATE_WORKING", [junit, lint]))).toMatchObject([{ kind: "skipped" }, { kind: "evidence", artifactId: "lint" }]);
+    expect(evidenceOnObligation()).toHaveLength(2);
+    const junitId = artifactEvidenceId(obligationId, "junit", sha256Digest(PASSING_JUNIT));
+    expect(evidenceOnObligation()[0].envelope.evidence_id).toBe(junitId);
+
+    // A bridge restarted mid-task, told what the obligation already holds, submits only the new artifact.
+    const restarted = new A2AObligationBridge({ client: localObligationClient(network), worker, obligationId, submittedEvidenceIds: evidenceOnObligation().map((e) => e.envelope.evidence_id) });
+    const patch = { artifactId: "patch", parts: [{ text: PATCH, mediaType: "text/x-diff" }], metadata: evidenceMeta("patch_ref", "patch_digest") };
+    expect(await restarted.handle(snapshot("TASK_STATE_COMPLETED", [junit, lint, patch]))).toMatchObject([
+      { kind: "event", eventType: "completion.proposed" },
+      { kind: "skipped" },
+      { kind: "skipped" },
+      { kind: "evidence", artifactId: "patch" },
+    ]);
+    expect(evidenceOnObligation()).toHaveLength(3);
+
+    // Without that list, a repeated artifact gets the same id, so the network refuses it instead of recording it twice.
+    const forgetful = new A2AObligationBridge({ client: localObligationClient(network), worker, obligationId });
+    await expect(forgetful.handle({ artifactUpdate: { taskId: "task-1", contextId: "ctx-1", artifact: junit } })).rejects.toThrow(`evidence_id ${junitId} already registered`);
+    expect(evidenceOnObligation()).toHaveLength(3);
+  });
+
+  it("reports failed, canceled and rejected tasks as terminal claims without signing anything on the obligation", async () => {
     const { network, worker, obligationId } = acceptedObligation();
     const bridge = new A2AObligationBridge({ client: localObligationClient(network), worker, obligationId });
-    expect(await bridge.handle({ statusUpdate: { taskId: "t", contextId: "c", status: { state: "TASK_STATE_FAILED" } } })).toMatchObject([{ kind: "skipped" }]);
+    const status = (state: "TASK_STATE_FAILED" | "TASK_STATE_CANCELED" | "TASK_STATE_REJECTED") => ({ statusUpdate: { taskId: "t", contextId: "c", status: { state } } });
+    expect(await bridge.handle(status("TASK_STATE_FAILED"))).toEqual([{ kind: "terminal", state: "TASK_STATE_FAILED", claimType: "provider_failure", taskId: "t" }]);
+    expect(await bridge.handle(status("TASK_STATE_CANCELED"))).toEqual([{ kind: "terminal", state: "TASK_STATE_CANCELED", claimType: "cancellation", taskId: "t" }]);
+    expect(await bridge.handle(status("TASK_STATE_REJECTED"))).toEqual([{ kind: "terminal", state: "TASK_STATE_REJECTED", claimType: "cancellation", taskId: "t" }]);
     expect(network.obligation(obligationId).state).toBe("accepted");
   });
 });

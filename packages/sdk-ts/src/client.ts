@@ -1,4 +1,4 @@
-import type { ClearingDecision, ClosurePackage, EventPayload, PublicKeyRecord, Signed } from "@atcn/schema";
+import type { ClearingDecision, ClearingVerdict, ClosurePackage, EventPayload, PublicKeyRecord, Signed } from "@atcn/schema";
 
 export class AtcnApiError extends Error {
   constructor(
@@ -15,7 +15,7 @@ export class AtcnApiError extends Error {
 }
 
 /** Must equal this package's version in package.json (checked by a test). */
-export const SDK_VERSION = "1.4.1";
+export const SDK_VERSION = "1.5.0";
 /** Names the SDK and its version on every request, so the API operator can count SDK versions in use. Nothing else is sent. */
 export const SDK_HEADER = "atcn-sdk";
 
@@ -160,6 +160,12 @@ export class AtcnClient {
   }
   listDecisions(obligationId: string) {
     return this.request<{ items: ClearingDecision[] }>("GET", `/v1/obligations/${obligationId}/decisions`);
+  }
+  /** The decision in effect as a signed, record-only verdict, with the closure package it was read from (verifyClearingVerdict). */
+  clearingVerdict(obligationId: string, escrow?: { rail: string; escrow_ref: string }) {
+    return this.request<{ verdict: ClearingVerdict; closure_package: ClosurePackage }>("GET", `/v1/obligations/${obligationId}/verdict`, undefined, {
+      query: { rail: escrow?.rail, escrow_ref: escrow?.escrow_ref },
+    });
   }
   finalize(decisionId: string, idempotencyKey?: string) {
     return this.request<Json>("POST", `/v1/decisions/${decisionId}/finalize`, undefined, { idempotencyKey });
