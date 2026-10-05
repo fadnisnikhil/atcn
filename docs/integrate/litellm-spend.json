@@ -1,0 +1,12 @@
+{
+  "data": [
+    { "request_id": "chatcmpl-1", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": "a2a-task-1", "spend": 0.0042, "prompt_tokens": 1200, "completion_tokens": 300, "total_tokens": 1500, "startTime": "2026-10-01T09:00:00Z" },
+    { "request_id": "chatcmpl-2", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": "a2a-task-1", "spend": 0.0061, "prompt_tokens": 1800, "completion_tokens": 420, "total_tokens": 2220, "startTime": "2026-10-01T09:05:00Z" },
+    { "request_id": "chatcmpl-3", "call_type": "acompletion", "model": "gpt-4o", "model_group": "gpt-4o", "end_user": "a2a-task-2", "spend": 0.0349, "prompt_tokens": 2100, "completion_tokens": 650, "total_tokens": 2750, "startTime": "2026-10-01T10:00:00Z" },
+    { "request_id": "chatcmpl-4", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": null, "spend": 0.0009, "prompt_tokens": 300, "completion_tokens": 80, "total_tokens": 380, "startTime": "2026-10-01T10:30:00Z" }
+  ],
+  "total": 4,
+  "page": 1,
+  "page_size": 50,
+  "total_pages": 1
+}

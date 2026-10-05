@@ -1,7 +1,23 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { extname } from "node:path";
 import { digestOf } from "@atcn/schema";
-import { IMPORT_FIELDS, IMPORT_KINDS, importRows, parseCsvRows, parseJsonlRows, type ImportField, type ImportKind, type ImportOptions } from "@atcn/subledger";
+import {
+  IMPORT_FIELDS,
+  IMPORT_KINDS,
+  IMPORT_PRESETS,
+  importPresetRows,
+  importRows,
+  parseCsvRows,
+  parseExportText,
+  parseJsonlRows,
+  type ImportField,
+  type ImportKind,
+  type ImportOptions,
+  type ImportPreset,
+  type ImportRow,
+  type PresetImportResult,
+  type PresetOptions,
+} from "@atcn/subledger";
 import { LocalRunnerError } from "./errors.js";
 import { loadJob } from "./job.js";
 
@@ -11,6 +27,8 @@ export interface ImportSummary {
   deduplicated: number;
   /** Rows whose key is already in the job file with different content; the original is kept, as duplicate_event would. */
   conflicting: { source_event_id: string; row: number }[];
+  /** Preset imports only: valid rows that carry no job cost, for example a Stripe payout. */
+  skipped: { row: number; reason: string }[];
   errors: { row: number; error: string }[];
 }
 
@@ -30,27 +48,44 @@ export function parseImportKind(kind: string): ImportKind {
   return kind as ImportKind;
 }
 
+export function parseImportPreset(preset: string): ImportPreset {
+  if (!(IMPORT_PRESETS as readonly string[]).includes(preset)) throw new LocalRunnerError(`--preset ${preset}: use one of ${IMPORT_PRESETS.join(", ")}`);
+  return preset as ImportPreset;
+}
+
 /**
  * Reads a CSV or JSONL export and appends one financial event per row to the job file's financial_events. Rows are
  * keyed by (source, source_event_id): an identical row already in the job is skipped, a changed one is not added.
  */
 export function importIntoJob(jobPath: string, filePath: string, options: ImportOptions): ImportSummary {
-  const job = loadJob(jobPath) as { financial_events?: Record<string, unknown>[] };
+  const rows = readRows(filePath, (text) => (extname(filePath).toLowerCase() === ".csv" ? parseCsvRows(text) : parseJsonlRows(text)));
+  return appendToJob(jobPath, { ...importRows(rows, options), skipped: [] });
+}
+
+/** Like importIntoJob, for a known export (LiteLLM, OpenRouter or Stripe) saved as JSON, JSONL or CSV. */
+export function importPresetIntoJob(jobPath: string, filePath: string, preset: ImportPreset, options: PresetOptions = {}): ImportSummary {
+  const rows = readRows(filePath, parseExportText);
+  return appendToJob(jobPath, importPresetRows(preset, rows, options));
+}
+
+function readRows(filePath: string, parse: (text: string) => ImportRow[]): ImportRow[] {
   let text: string;
   try {
     text = readFileSync(filePath, "utf8");
   } catch {
     throw new LocalRunnerError(`cannot read ${filePath}`);
   }
-  let rows;
   try {
-    rows = extname(filePath).toLowerCase() === ".csv" ? parseCsvRows(text) : parseJsonlRows(text);
+    return parse(text);
   } catch (error) {
     throw new LocalRunnerError(`${filePath}: ${(error as Error).message}`);
   }
-  const { events, errors } = importRows(rows, options);
+}
+
+function appendToJob(jobPath: string, { events, errors, skipped }: PresetImportResult): ImportSummary {
+  const job = loadJob(jobPath) as { financial_events?: Record<string, unknown>[] };
   const existing = job.financial_events ?? [];
-  const summary: ImportSummary = { added: 0, deduplicated: 0, conflicting: [], errors };
+  const summary: ImportSummary = { added: 0, deduplicated: 0, conflicting: [], skipped, errors };
   for (const { row, event } of events) {
     const same = existing.find((e) => e.source === event.source && e.source_event_id === event.source_event_id);
     if (!same) {

@@ -33,6 +33,16 @@ npx @atcn/local-runner import gateway-holds.jsonl --job job.json --source cost-g
 
 `--map` tells the importer which of your columns holds each field, so your export doesn't need reformatting. `--kind` is `charge` (the default), `invoice`, `estimate` or `hold`. Rows without an id column get one from the columns named by `--key`, so re-importing the same export doesn't double count, and a replayed row with altered amounts opens a `duplicate_event` exception. A worked example with sample files is in [Integrating your own bills](https://github.com/fadnisnikhil/atcn/blob/main/docs/INTEGRATE.md).
 
+LiteLLM spend logs, OpenRouter analytics and Stripe balance reports need no `--map`:
+
+```bash
+npx @atcn/local-runner import litellm-spend.json --job job.json --preset litellm
+npx @atcn/local-runner import openrouter-activity.json --job job.json --preset openrouter
+npx @atcn/local-runner import stripe-balance.csv --job job.json --preset stripe
+```
+
+Send the delegation's `provider_job_ref` as the LLM request's `user` field, or as `atcn_job_ref` metadata on the Stripe PaymentIntent or transfer. LLM spend, which comes in fractions of a cent, is added up per job per UTC day and rounded to cents once. [Section 7 of the guide](https://github.com/fadnisnikhil/atcn/blob/main/docs/INTEGRATE.md#7-import-litellm-openrouter-or-stripe-exports-without-a-column-map) shows how to produce each export.
+
 ## Options
 
 - **`--data-dir <dir>`:** where the key and the run outputs go (default `./.atcn-local`).

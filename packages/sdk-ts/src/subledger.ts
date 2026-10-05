@@ -31,8 +31,10 @@ type Opts = { idempotencyKey?: string };
 /**
  * How the hosted importer reads a CSV export: key_columns is a comma-separated list of columns that identify a row,
  * map names the export's column for an import field, and minor_digits is the decimal places of amount_major (default 2).
+ * preset reads a LiteLLM, OpenRouter or Stripe export (CSV, JSON or JSONL) without a column map.
  */
 type CsvImportOptions = {
+  preset?: "litellm" | "openrouter" | "stripe";
   kind?: "charge" | "invoice" | "estimate" | "hold";
   source?: string;
   key_columns?: string;
@@ -106,7 +108,7 @@ export class SubledgerClient {
   }
   importCsv(csv: string, opts: Opts & CsvImportOptions = {}) {
     const { idempotencyKey, map, ...query } = opts;
-    return this.http.request<{ imported: number; deduplicated: number; rejected: number; rows: Json[] }>("POST", "/v1/financial-events/import", undefined, {
+    return this.http.request<{ imported: number; deduplicated: number; rejected: number; skipped?: number; rows: Json[] }>("POST", "/v1/financial-events/import", undefined, {
       idempotencyKey,
       query: { ...query, map: map === undefined ? undefined : JSON.stringify(map) },
       textBody: { contentType: "text/csv", text: csv },

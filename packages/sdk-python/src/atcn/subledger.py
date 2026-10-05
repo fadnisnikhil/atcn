@@ -237,11 +237,14 @@ class SubledgerClient:
         issued_by: str | None = None,
         column_map: dict[str, str] | None = None,
         minor_digits: int | None = None,
+        preset: str | None = None,
     ) -> Json:
         """Without options, the CSV uses the import template. With them, it is a gateway's or provider's own export:
         key_columns identify a row, column_map names the export's column for an import field (for example
-        {"amount_major": "Total"}), and minor_digits is the decimal places of amount_major (default 2)."""
+        {"amount_major": "Total"}), and minor_digits is the decimal places of amount_major (default 2).
+        preset ("litellm", "openrouter" or "stripe") reads that export, as CSV, JSON or JSONL, without a column map."""
         query = {
+            "preset": preset,
             "kind": kind,
             "source": source,
             "key_columns": None if key_columns is None else ",".join(key_columns),

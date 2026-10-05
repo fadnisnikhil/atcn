@@ -1,3 +1,17 @@
+# ATCN 1.5.1: import LiteLLM, OpenRouter and Stripe exports without a column map
+
+- **Import presets (`@atcn/subledger`).** `importPresetRows("litellm" | "openrouter" | "stripe", rows)` turns these exports into financial events, and `parseExportText` reads them saved as JSON, JSONL or CSV.
+  - `litellm`: LiteLLM proxy spend logs (`/spend/logs/v2`). The job reference is `end_user`, the OpenAI `user` field the agent sent.
+  - `openrouter`: OpenRouter analytics rows grouped by `external_user` and day. The job reference is the request's `user` field.
+  - `stripe`: the itemized balance report. `charge` becomes a charge, `refund` a refund, a Connect `transfer` `payment_reported`, and a `transfer_reversal` a refund. The job reference is `atcn_job_ref` metadata on the PaymentIntent or transfer. Payouts, Stripe fees, disputes and adjustments are skipped and listed.
+  - LLM spend comes in fractions of a cent. It is summed exactly per job reference per UTC day and rounded half up to cents once.
+- **Local runner:** `atcn-local import <file> --job job.json --preset litellm|openrouter|stripe`. [Section 7 of the integration guide](docs/INTEGRATE.md#7-import-litellm-openrouter-or-stripe-exports-without-a-column-map) runs on sample exports in CI.
+- **SDKs:** `importCsv(text, { preset })` in TypeScript and `import_csv(text, preset=...)` in Python.
+- **[SECURITY.md](SECURITY.md):** how to report a vulnerability privately, and what counts.
+- **Provenance:** `@atcn/adapter-a2a` and `@atcn/mcp-server` are now published from GitHub Actions with npm provenance, like the other packages.
+
+Everything is additive; documents made before 1.5.1 verify byte for byte.
+
 # ATCN 1.5.0: agent traces, usage against cost, witnesses and agreed failure terms
 
 A signature proves who sent a record, not that the job ran. 1.5.0 lets the verifier see the run's trace: which models and tools it called and how many tokens it used. It also checks that the price agreed for the work is supported by that usage at agreed rates. Independent witnesses can attest the run, conflicting attestations go to a reviewer instead of being silently resolved, and refund terms are agreed before work starts. Everything is additive. Documents made before 1.5.0 verify byte for byte.

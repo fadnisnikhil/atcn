@@ -199,6 +199,15 @@ def test_csv_import_sends_the_column_map_as_json_and_the_decimal_places(api):
     }
 
 
+def test_csv_import_sends_the_preset(api):
+    client = SubledgerClient(api.base_url, "k", retries=0)
+    client.import_csv('{"data": []}', preset="litellm")
+    path, query = api.requests[0]["path"].split("?")
+    assert path == "/v1/financial-events/import"
+    assert urllib.parse.parse_qs(query) == {"preset": ["litellm"]}
+    assert api.requests[0]["body"] == '{"data": []}'
+
+
 def test_every_request_names_the_sdk_version_and_carries_default_headers(api):
     client = SubledgerClient(api.base_url, "k", retries=0, default_headers={"atcn-workflow": "demo"})
     client.get_task("tsk_1")

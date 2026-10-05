@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { sendUsageReport } from "@atcn/usage";
 import type { ExpectationIssuer } from "@atcn/subledger";
 import { LocalRunnerError } from "./errors.js";
-import { importIntoJob, parseColumnMap, parseImportKind } from "./import.js";
+import { importIntoJob, importPresetIntoJob, parseColumnMap, parseImportKind, parseImportPreset, type ImportSummary } from "./import.js";
 import { loadJob, runJob, type JobResult } from "./job.js";
 
 const VERSION = "1.5.0";
@@ -17,6 +17,8 @@ usage: atcn-local demo                run the bundled calculator-fix demo ($100 
        atcn-local run <job.json>      run your own job file
        atcn-local import <file.csv|file.jsonl> --job <job.json> --source <name> [import options]
                                       add a provider bill or a gateway's estimate/hold log to a job file
+       atcn-local import <file> --job <job.json> --preset litellm|openrouter|stripe [--source <name>]
+                                      add a LiteLLM, OpenRouter or Stripe export without a column map
 options:
   --data-dir <dir>   where the runner keeps its signing key and run outputs (default: ./.atcn-local)
   --json             print the result as JSON
@@ -29,6 +31,9 @@ import options:
   --key c1,c2        when rows have no event id: the columns that identify a row (its key is their canonical hash)
   --currency <code>  currency when the file has no currency column
   --issued-by <who>  agent, gateway (default) or operator, for estimates and holds without an issued_by column
+  --preset <name>    litellm: spend logs, job ref in end_user; openrouter: analytics rows by external_user and day;
+                     stripe: itemized balance report, job ref in payment_metadata[atcn_job_ref] or
+                     transfer_metadata[atcn_job_ref]. LLM spend is summed per job and UTC day, then rounded to cents.
 
 No account, API, database, or payment credentials are needed. The runner evaluates the evidence a provider
 submits (test, lint, and patch reports) against the agreed policy; it does not execute the delivered code.
@@ -93,6 +98,7 @@ async function main(): Promise<number> {
         key: { type: "string" },
         currency: { type: "string" },
         "issued-by": { type: "string" },
+        preset: { type: "string" },
       },
     });
   } catch (error) {
@@ -140,24 +146,33 @@ async function main(): Promise<number> {
 }
 
 /** atcn-local import: appends one financial event per row to the job file, then the job runs as usual. */
-function runImport(file: string, values: { job?: string; source?: string; kind?: string; map?: string[]; key?: string; currency?: string; "issued-by"?: string; json?: boolean }): number {
-  if (!values.job || !values.source) {
-    console.error(`import needs --job <job.json> and --source <name>\n\n${USAGE}`);
+function runImport(file: string, values: { job?: string; source?: string; kind?: string; map?: string[]; key?: string; currency?: string; "issued-by"?: string; preset?: string; json?: boolean }): number {
+  if (!values.job || (!values.source && !values.preset)) {
+    console.error(`import needs --job <job.json> and --source <name> or --preset <name>\n\n${USAGE}`);
+    return 2;
+  }
+  const columnOptions = [values.kind && "--kind", values.map?.length && "--map", values.key && "--key", values.currency && "--currency", values["issued-by"] && "--issued-by"].filter(Boolean);
+  if (values.preset && columnOptions.length > 0) {
+    console.error(`--preset maps the columns itself; drop ${columnOptions.join(", ")}`);
     return 2;
   }
   try {
-    const summary = importIntoJob(resolve(values.job), resolve(file), {
-      kind: parseImportKind(values.kind ?? "charge"),
-      source: values.source,
-      map: parseColumnMap(values.map ?? []),
-      keyColumns: values.key ? values.key.split(",").map((c) => c.trim()) : undefined,
-      currency: values.currency,
-      issuedBy: values["issued-by"] as ExpectationIssuer | undefined,
-    });
+    const summary: ImportSummary = values.preset
+      ? importPresetIntoJob(resolve(values.job), resolve(file), parseImportPreset(values.preset), { source: values.source })
+      : importIntoJob(resolve(values.job), resolve(file), {
+          kind: parseImportKind(values.kind ?? "charge"),
+          source: values.source!,
+          map: parseColumnMap(values.map ?? []),
+          keyColumns: values.key ? values.key.split(",").map((c) => c.trim()) : undefined,
+          currency: values.currency,
+          issuedBy: values["issued-by"] as ExpectationIssuer | undefined,
+        });
     if (values.json) console.log(JSON.stringify(summary, null, 2));
     else {
-      console.log(`added ${summary.added}, already present ${summary.deduplicated}, changed and not added ${summary.conflicting.length}, rejected ${summary.errors.length}`);
+      const skipped = values.preset ? `, skipped ${summary.skipped.length}` : "";
+      console.log(`added ${summary.added}, already present ${summary.deduplicated}, changed and not added ${summary.conflicting.length}${skipped}, rejected ${summary.errors.length}`);
       for (const c of summary.conflicting) console.log(`  row ${c.row}: ${c.source_event_id} is already in the job with different content; the original is kept`);
+      for (const s of summary.skipped) console.log(`  row ${s.row}: skipped, ${s.reason}`);
       for (const e of summary.errors) console.log(`  row ${e.row}: ${e.error}`);
       console.log(`next: atcn-local run ${relative(process.cwd(), resolve(values.job))}`);
     }

@@ -89,6 +89,45 @@ if (estimate) subledger.recordFinancialEvent(estimateEventFromA2A(estimate, { ma
 [`examples/a2a-delegation`](../examples/a2a-delegation) runs this against two real A2A agents on localhost. Add
 `--with-estimates` to also record a signed agent estimate and compare it with the bill.
 
+## 7. Import LiteLLM, OpenRouter or Stripe exports without a column map
+
+`--preset` knows these exports, so no `--map` is needed. Each row needs the delegation's `provider_job_ref`:
+
+| Preset | Export | Where the job reference goes |
+| --- | --- | --- |
+| `litellm` | LiteLLM proxy spend logs (`/spend/logs/v2`) | the request's OpenAI `user` field (logged as `end_user`) |
+| `openrouter` | OpenRouter analytics query by `external_user` and day | the request's `user` field (reported as `external_user`) |
+| `stripe` | Stripe itemized balance report | metadata `atcn_job_ref` on the PaymentIntent or Connect transfer |
+
+LLM spend comes in fractions of a cent. The presets add it up exactly per job reference per UTC day, then round to
+cents once (half up), so each job gets one charge per day. Import whole, finished days: a day imported again after
+more requests landed has a different total and is not added (`changed and not added`).
+
+Stripe rows become events by `reporting_category`: `charge` is a charge, `refund` a refund, a Connect `transfer` to a
+provider is `payment_reported`, and a `transfer_reversal` is a refund. Payouts, Stripe fees, disputes and adjustments
+are skipped and listed, since they are not cost of a job.
+
+The files in [`docs/integrate/`](integrate/) are small samples of each export (CI runs these commands too):
+
+```shell
+npx atcn-local import litellm-spend.json --job job.json --preset litellm
+npx atcn-local import openrouter-activity.json --job job.json --preset openrouter
+npx atcn-local import stripe-balance.csv --job job.json --preset stripe
+```
+
+To produce the exports from your own accounts:
+
+- LiteLLM: fetch every page of a finished UTC day, `GET /spend/logs/v2?start_date=2026-10-01%2000:00:00&end_date=2026-10-01%2023:59:59&page=1&page_size=1000`,
+  and join the pages into one file, for example `jq -c '.data[]' page-*.json > litellm-spend.jsonl`.
+- OpenRouter: with a management key, `POST https://openrouter.ai/api/v1/analytics/query` with
+  `{"metrics":["total_usage","request_count"],"dimensions":["external_user"],"granularity":"day","time_range":{"start":"2026-10-01T00:00:00Z","end":"2026-10-02T00:00:00Z"}}`
+  and save the response. Grouping by `external_user` covers the last 31 days.
+- Stripe: run the report `balance_change_from_activity.itemized.7` (Dashboard or Reporting API) with the default
+  `.` decimal separator, and add the columns `created_utc`, `payment_metadata[atcn_job_ref]` and
+  `transfer_metadata[atcn_job_ref]`.
+
+The hosted API takes the same presets: `POST /v1/financial-events/import?preset=litellm` with the file as the body.
+
 ## What you get, and what you don't
 
 You get a signed closure that lists every delegation, charge, estimate and hold, the roll-up, the gap between

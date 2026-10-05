@@ -11,5 +11,6 @@ export * from "./matching.js";
 export * from "./usage.js";
 export * from "./expectations.js";
 export * from "./importing.js";
+export * from "./presets.js";
 export * from "./outcome.js";
 export * from "./rails.js";

@@ -1,0 +1,9 @@
+{
+  "data": {
+    "data": [
+      { "date__day": "2026-10-01", "external_user": "a2a-task-3", "request_count": "4", "total_usage": 0.0126 },
+      { "date__day": "2026-10-01", "external_user": "a2a-task-4", "request_count": "7", "total_usage": 0.0251 },
+      { "date__day": "2026-10-01", "external_user": "", "request_count": "2", "total_usage": 0.004 }
+    ]
+  }
+}

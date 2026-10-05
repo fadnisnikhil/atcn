@@ -1,0 +1,4 @@
+balance_transaction_id,created_utc,currency,gross,fee,net,reporting_category,source_id,description,payment_metadata[atcn_job_ref],transfer_metadata[atcn_job_ref]
+txn_1PaAAA,2026-10-01 12:00:00,usd,-0.50,0.00,-0.50,transfer,tr_1PaAAA,Pay search agent,,a2a-task-5
+txn_1PaBBB,2026-10-01 12:00:00,usd,-0.25,0.00,-0.25,fee,fee_1PaBBB,Connect fee,,
+txn_1PaCCC,2026-10-02 00:00:00,usd,-40.00,0.00,-40.00,payout,po_1PaCCC,STRIPE PAYOUT,,
