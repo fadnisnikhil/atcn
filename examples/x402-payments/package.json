@@ -1,6 +1,6 @@
 {
   "name": "@atcn/example-x402-payments",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "description": "An agent buys three resources over x402; ATCN links each payment record to the work it bought and verifies the closure offline",
   "license": "Apache-2.0",
@@ -9,9 +9,9 @@
     "start": "tsx src/main.ts"
   },
   "dependencies": {
-    "@atcn/local-runner": "1.5.0",
-    "@atcn/schema": "1.5.0",
-    "@atcn/subledger": "1.5.0",
+    "@atcn/local-runner": "1.5.1",
+    "@atcn/schema": "1.5.1",
+    "@atcn/subledger": "1.5.1",
     "express": "^5.1.0"
   },
   "devDependencies": {

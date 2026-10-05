@@ -1,6 +1,6 @@
 {
   "name": "@atcn/schema",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Data formats and signing for ATCN: canonical JSON (RFC 8785), Ed25519 signatures, JSON Schemas and test vectors",
   "license": "Apache-2.0",
   "repository": {

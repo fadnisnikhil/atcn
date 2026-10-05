@@ -1,6 +1,6 @@
 {
   "name": "@atcn/mcp-server",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "MCP server that lets agents in Claude, Cursor and other hosts record what each job cost and verify signed closures offline. Record-only; no account needed.",
   "license": "Apache-2.0",
   "repository": {
@@ -36,11 +36,11 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/core": "1.5.0",
-    "@atcn/local-runner": "1.5.0",
-    "@atcn/schema": "1.5.0",
-    "@atcn/sdk": "1.5.0",
-    "@atcn/subledger": "1.5.0",
+    "@atcn/core": "1.5.1",
+    "@atcn/local-runner": "1.5.1",
+    "@atcn/schema": "1.5.1",
+    "@atcn/sdk": "1.5.1",
+    "@atcn/subledger": "1.5.1",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "zod": "^4.1.0"
   }

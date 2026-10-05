@@ -1,6 +1,6 @@
 {
   "name": "@atcn/sdk",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "TypeScript SDK for ATCN, a cost record for AI agent jobs that anyone can verify: record tasks and charges, sign events, verify closures offline",
   "license": "Apache-2.0",
   "repository": {
@@ -36,10 +36,10 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/core": "1.5.0",
-    "@atcn/schema": "1.5.0",
-    "@atcn/subledger": "1.5.0",
-    "@atcn/usage": "1.5.0",
+    "@atcn/core": "1.5.1",
+    "@atcn/schema": "1.5.1",
+    "@atcn/subledger": "1.5.1",
+    "@atcn/usage": "1.5.1",
     "zod": "^4.1.0"
   }
 }

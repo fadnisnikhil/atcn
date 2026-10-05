@@ -1,6 +1,6 @@
 {
   "name": "atcn-sdk",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "ATCN for TypeScript (re-exports @atcn/sdk): record what AI agent jobs cost and verify signed closures, receipts and closure packages offline",
   "license": "Apache-2.0",
   "repository": {
@@ -40,6 +40,6 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/sdk": "1.5.0"
+    "@atcn/sdk": "1.5.1"
   }
 }

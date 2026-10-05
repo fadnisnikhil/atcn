@@ -1,6 +1,6 @@
 {
   "name": "@atcn/adapter-a2a",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Record paid A2A (Agent2Agent) work in ATCN: signed task events, billing references, estimates, signed outcomes and sub-task lineage",
   "license": "Apache-2.0",
   "repository": {
@@ -32,7 +32,7 @@
     "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "@atcn/schema": "1.5.0",
-    "@atcn/sdk": "1.5.0"
+    "@atcn/schema": "1.5.1",
+    "@atcn/sdk": "1.5.1"
   }
 }

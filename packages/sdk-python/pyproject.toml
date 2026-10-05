@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atcn"
-version = "1.5.0"
+version = "1.5.1"
 description = "Python SDK for ATCN, a cost record for AI agent jobs that anyone can verify: offline verification of closures, receipts and closure packages, Ed25519 signing, API clients and A2A helpers"
 readme = "README.md"
 license = "Apache-2.0"
