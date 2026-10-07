@@ -15,6 +15,7 @@
     "packages/verify-cli",
     "examples/local-runner",
     "examples/a2a-delegation",
+    "examples/a2a-cost-gateway",
     "examples/x402-payments",
     "packages/mcp-server"
   ],
@@ -25,6 +26,7 @@
     "test": "vitest run",
     "demo": "atcn-local demo",
     "demo:a2a": "npm start -w examples/a2a-delegation",
+    "demo:cost-gateway": "npm start -w examples/a2a-cost-gateway",
     "demo:x402": "npm start -w examples/x402-payments",
     "check:versions": "node scripts/release.mjs check",
     "set-version": "node scripts/release.mjs set",

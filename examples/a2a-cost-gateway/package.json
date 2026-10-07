@@ -1,0 +1,16 @@
+{
+  "name": "@atcn/example-a2a-cost-gateway",
+  "version": "1.5.1",
+  "private": true,
+  "description": "Reads a2a-cost-gateway's JSONL logs, imports the provider's LiteLLM bill, and reconciles the gateway's estimates against actual cost in a closure that verifies offline",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@atcn/local-runner": "1.5.1",
+    "@atcn/schema": "1.5.1",
+    "@atcn/subledger": "1.5.1"
+  }
+}

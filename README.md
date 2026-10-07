@@ -68,6 +68,7 @@ Each example runs locally and ends with a signed closure that verifies offline.
 | Example | Run | What it shows |
 | --- | --- | --- |
 | [A2A delegation](examples/a2a-delegation) | `npm run demo:a2a` | An orchestrator hands work to two A2A v1.0 agents over HTTP: one paid through an obligation whose events the agent signs, one that bills by A2A task id. |
+| [a2a-cost-gateway estimates vs bill](examples/a2a-cost-gateway) | `npm run demo:cost-gateway` | Reads the JSONL logs of [a2a-cost-gateway](https://github.com/AliAbdallah21/a2a-cost-gateway), imports the provider's LiteLLM bill, and puts the gateway's per-task estimates next to the billed cost, matched on the A2A task id. |
 | [LangGraph paid services](examples/langgraph-paid-services) | `python graph.py` | One customer job in a LangGraph graph calls three paid services; each bill is matched to the node that caused it. |
 | [x402 payments](examples/x402-payments) | `npm run demo:x402` | Three x402 v2 purchases; each payment record is linked to the work it bought, and a pending settlement stays unresolved. |
 

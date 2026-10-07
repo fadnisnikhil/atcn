@@ -1,0 +1,13 @@
+{
+  "data": [
+    { "request_id": "chatcmpl-7f1", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": "0f3c9a51-6d2e-4b8a-9c41-7e5d2a1b8f60", "spend": 0.0096, "prompt_tokens": 44000, "completion_tokens": 5000, "total_tokens": 49000, "startTime": "2026-10-07T17:58:11Z" },
+    { "request_id": "chatcmpl-7f2", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": "62c22827-2f08-458a-b62b-ad757fa10a52", "spend": 0.0117, "prompt_tokens": 52000, "completion_tokens": 6500, "total_tokens": 58500, "startTime": "2026-10-07T18:16:24.010Z" },
+    { "request_id": "chatcmpl-7f3", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": "62c22827-2f08-458a-b62b-ad757fa10a52", "spend": 0.01347, "prompt_tokens": 61000, "completion_tokens": 7200, "total_tokens": 68200, "startTime": "2026-10-07T18:16:24.070Z" },
+    { "request_id": "chatcmpl-7f4", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": "cb08c12b-a44c-425f-930a-9c992f1d36c0", "spend": 0.00816, "prompt_tokens": 38000, "completion_tokens": 4100, "total_tokens": 42100, "startTime": "2026-10-07T18:16:24.300Z" },
+    { "request_id": "chatcmpl-7f5", "call_type": "acompletion", "model": "gpt-4o-mini", "model_group": "gpt-4o-mini", "end_user": null, "spend": 0.00036, "prompt_tokens": 1200, "completion_tokens": 300, "total_tokens": 1500, "startTime": "2026-10-07T18:20:02Z" }
+  ],
+  "total": 5,
+  "page": 1,
+  "page_size": 50,
+  "total_pages": 1
+}
